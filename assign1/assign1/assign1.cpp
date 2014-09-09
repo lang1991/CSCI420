@@ -161,6 +161,7 @@ void mouseidle(int x, int y)
 
 void mousebutton(int button, int state, int x, int y)
 {
+
   switch (button)
   {
     case GLUT_LEFT_BUTTON:
@@ -191,7 +192,7 @@ void mousebutton(int button, int state, int x, int y)
   g_vMousePos[1] = y;
 }
 
-int _tmain(int argc, _TCHAR* argv[])
+int main(int argc, char* argv[])
 {
 	// I've set the argv[1] to spiral.jpg.
 	// To change it, on the "Solution Explorer",
@@ -211,9 +212,7 @@ int _tmain(int argc, _TCHAR* argv[])
 	    exit(1);
 	}
 
-	/* do initialization */
 	glutInit(&argc,(char**)argv);
-
 	// request double buffer
 	glutInitDisplayMode(GLUT_DOUBLE | GLUT_DEPTH | GLUT_RGBA);
 
@@ -226,7 +225,6 @@ int _tmain(int argc, _TCHAR* argv[])
 	// creates a window
 	glutCreateWindow("Assignment 1");
   	myinit();
-
 
 
 	/*
@@ -256,7 +254,8 @@ int _tmain(int argc, _TCHAR* argv[])
 	/* callback for mouse button changes */
 	glutMouseFunc(mousebutton);
 
-
+	/* do initialization */
+	myinit();
 
 	glutMainLoop();
 	return 0;
