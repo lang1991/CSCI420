@@ -36,7 +36,7 @@ Pic * g_pHeightData;
 /* Write a screenshot to the specified filename */
 void saveScreenshot (char *filename)
 {
-  int i, j;
+  int i;
   Pic *in = NULL;
 
   if (filename == NULL)
@@ -63,7 +63,7 @@ void saveScreenshot (char *filename)
 void myinit()
 {
   /* setup gl view here */
-  glClearColor(1.0, 1.0, 1.0, 1.0);
+  glClearColor(0.0, 0.0, 0.0, 1.0);
   glEnable(GL_DEPTH_TEST);
   glShadeModel(GL_SMOOTH);
 }
@@ -74,6 +74,9 @@ void display()
   /* replace this code with your height field implementation */
   /* you may also want to precede it with your 
 rotation/translation/scaling */
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
 
   glBegin(GL_POLYGON);
 
@@ -87,6 +90,19 @@ rotation/translation/scaling */
   glVertex3f(0.5, -0.5, 0.0);
 
   glEnd();
+
+  glutSwapBuffers();
+}
+
+void reshape(int w, int h)
+{
+	glViewport(0, 0, w, h);
+	glMatrixMode(GL_PROJECTION);
+	glLoadIdentity();
+	gluPerspective(60.0, static_cast<GLdouble> (w) / static_cast<GLdouble> (h), 0.1, 1000);
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	gluLookAt(0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0);
 }
 
 void menufunc(int value)
@@ -236,6 +252,7 @@ int main(int argc, char* argv[])
 	//exit(0);
 
 	/* tells glut to use a particular display function to redraw */
+	glutReshapeFunc(reshape);
 	glutDisplayFunc(display);
   
 	/* allow the user to quit using the right mouse button menu */
