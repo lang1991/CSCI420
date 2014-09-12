@@ -1,10 +1,13 @@
-﻿Build started 9/12/2014 1:28:18 PM.
+﻿Build started 9/12/2014 2:18:46 PM.
      1>Project "E:\Academic\CurrentClasses\ComputerGraphics\Assignments\CSCI420\assign1ModernOpenGL\assign1ModernOpenGL\assign1ModernOpenGL.vcxproj" on node 2 (Build target(s)).
      1>ClCompile:
-         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp
+         C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\CL.exe /c /ZI /nologo /W3 /WX- /Od /Oy- /D WIN32 /D _DEBUG /D _CONSOLE /D _UNICODE /D UNICODE /Gm /EHsc /RTC1 /MDd /GS /fp:precise /Zc:wchar_t /Zc:forScope /Fo"Debug\\" /Fd"Debug\vc110.pdb" /Gd /TP /analyze- /errorReport:prompt main.cpp Utilities.cpp
+         Utilities.cpp
          main.cpp
+         Generating Code...
        Link:
          C:\Program Files (x86)\Microsoft Visual Studio 11.0\VC\bin\link.exe /ERRORREPORT:PROMPT /OUT:"E:\Academic\CurrentClasses\ComputerGraphics\Assignments\CSCI420\assign1ModernOpenGL\Debug\assign1ModernOpenGL.exe" /INCREMENTAL /NOLOGO opengl32.lib glfw3.lib glew32.lib libjpeg.lib libtiff.lib picLibrary.lib kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib shell32.lib ole32.lib oleaut32.lib uuid.lib odbc32.lib odbccp32.lib /MANIFEST /MANIFESTUAC:"level='asInvoker' uiAccess='false'" /manifest:embed /DEBUG /PDB:"E:\Academic\CurrentClasses\ComputerGraphics\Assignments\CSCI420\assign1ModernOpenGL\Debug\assign1ModernOpenGL.pdb" /SUBSYSTEM:CONSOLE /TLBID:1 /DYNAMICBASE /NXCOMPAT /IMPLIB:"E:\Academic\CurrentClasses\ComputerGraphics\Assignments\CSCI420\assign1ModernOpenGL\Debug\assign1ModernOpenGL.lib" /MACHINE:X86 Debug\main.obj
+         Debug\Utilities.obj
          picLibrary.lib(pic.obj) : MSIL .netmodule or module compiled with /GL found; restarting link with /LTCG; add /LTCG to the link command line to improve linker performance
      1>LINK : warning LNK4075: ignoring '/INCREMENTAL' due to '/LTCG' specification
      1>main.obj : warning LNK4075: ignoring '/EDITANDCONTINUE' due to '/OPT:LBR' specification
@@ -74,4 +77,4 @@
 
 Build succeeded.
 
-Time Elapsed 00:00:01.30
+Time Elapsed 00:00:02.34
