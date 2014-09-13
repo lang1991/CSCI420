@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include "Utilities.h"
+#include "Pose.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include "glew/include/GL/glew.h"
@@ -16,14 +17,35 @@ using namespace glm;
 Pic * g_pHeightData;
 
 // Window size
-int windowWidth = 640;
-int windowHeight = 480;
+int gWindowWidth = 640;
+int gWindowHeight = 480;
 
 // Mesh configurations
-int XStep = 1;
-int ZStep = 1;
+int gXStep = 1;
+int gZStep = 1;
+
+// Pose of the mesh
+Pose gMeshPose;
+
+// Input variables
+enum ControlState
+{
+	ROTATE,
+	TRANSLATE,
+	SCALE,
+};
+
+enum RenderState
+{
+	POINT,
+	TRIANGLE,
+	LINE,
+};
 
 
+double gMousePos[2] = {0, 0};
+ControlState gControlState = ROTATE;
+RenderState gRenderState = TRIANGLE;
 void saveScreenshot(char *filename)
 {
 	int i;
@@ -100,6 +122,83 @@ void BuildHeightmap(int inXStart, int inYStart, int inZStart, unsigned int inXSt
 	}
 }
 
+void OnMouseEvent(GLFWwindow* InWindow)
+{
+	double newXPos;
+	double newYPos;
+	glfwGetCursorPos(InWindow, &newXPos, &newYPos);
+	double mouseDelta[2] = {newXPos - gMousePos[0], newYPos - gMousePos[1]};
+
+	if(gControlState == TRANSLATE)
+	{
+		if(glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		{
+			gMeshPose.mPosition.x += static_cast<float> (mouseDelta[0] * 0.01);
+			gMeshPose.mPosition.y -= static_cast<float> (mouseDelta[1] * 0.01);
+		}
+		else if(glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+		{
+			gMeshPose.mPosition.z += static_cast<float> (mouseDelta[1] * 0.01);
+		}
+	}
+	else if(gControlState == ROTATE)
+	{
+		if (glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		{
+			gMeshPose.mRotation.x += static_cast<float> (mouseDelta[1] * 0.1);
+			gMeshPose.mRotation.y += static_cast<float> (mouseDelta[0] * 0.1);
+		}
+		else if (glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+		{
+			gMeshPose.mRotation.z += static_cast<float> (mouseDelta[1] * 0.1);
+		}
+	}
+	else if(gControlState == SCALE)
+	{
+		if (glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_LEFT) == GLFW_PRESS)
+		{
+			gMeshPose.mScale.x *= static_cast<float> (1.0 + mouseDelta[0] * 0.01);
+			gMeshPose.mScale.y *= static_cast<float> (1.0 - mouseDelta[1] * 0.01);
+		}
+		else if (glfwGetMouseButton(InWindow, GLFW_MOUSE_BUTTON_MIDDLE) == GLFW_PRESS)
+		{
+			gMeshPose.mScale.z *= static_cast<float> (1.0 - mouseDelta[1] * 0.01);
+		}
+	}
+
+	gMousePos[0] = newXPos;
+	gMousePos[1] = newYPos;
+}
+
+void OnKeyboardEvent(GLFWwindow* InWindow)
+{
+	if(glfwGetKey(InWindow, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
+	{
+		gControlState = TRANSLATE;
+	}
+	else if(glfwGetKey(InWindow, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+	{
+		gControlState = SCALE;
+	}
+	else
+	{
+		gControlState = ROTATE;
+	}
+
+	if(glfwGetKey(InWindow, GLFW_KEY_T) == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+	else if(glfwGetKey(InWindow, GLFW_KEY_L) == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	}
+	else if(glfwGetKey(InWindow, GLFW_KEY_P) == GLFW_PRESS)
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_POINT);
+	}
+}
+
 int main(int argc, char** argv)
 {
 	// I've set the argv[1] to spiral.jpg.
@@ -121,7 +220,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	GLFWwindow* window = CreateWindow(windowWidth, windowHeight);
+	GLFWwindow* window = CreateWindow(gWindowWidth, gWindowHeight);
 	if(!window)
 	{
 		cout << "Cannot create GLFW window. Maybe update your GPU driver?\nPress Enter to exit.\n";
@@ -141,7 +240,7 @@ int main(int argc, char** argv)
 	}
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
-	
+
 	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
 	glDepthFunc(GL_LEQUAL);
@@ -157,10 +256,9 @@ int main(int argc, char** argv)
 	
 	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
 	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
-	mat4 proj = perspective(60.0f, static_cast<float> (windowWidth) / windowHeight, 0.1f, 1000.0f);
+	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
 	mat4 view = lookAt(vec3(0, 500, 0), vec3(0, 0, 0), vec3(0, 0, -1));
-	mat4 model = mat4(1.0f);
-	mat4 MVP = proj * view * model;
+	mat4 MVP = proj * view * gMeshPose.mTransform;
 
 	g_pHeightData = jpeg_read((char*)argv[1], NULL);
 	if (!g_pHeightData)
@@ -174,9 +272,7 @@ int main(int argc, char** argv)
 	vector<unsigned short> indices;
 	int upperLeftX = -g_pHeightData->nx / 2;
 	int upperLeftZ = -g_pHeightData->ny / 2;
-	BuildHeightmap(upperLeftX, 0, upperLeftZ, XStep, ZStep, vertices, indices);
-
-	
+	BuildHeightmap(upperLeftX, 0, upperLeftZ, gXStep, gZStep, vertices, indices);
 
 	GLuint vertexBuffer;
 	glGenBuffers(1, &vertexBuffer);
@@ -190,10 +286,23 @@ int main(int argc, char** argv)
 
 	glUseProgram(shaderProgramID);
 
-
 	do 
 	{
+		OnMouseEvent(window);
+		OnKeyboardEvent(window);
+
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+
+		mat4 rotateX = rotate(mat4(), gMeshPose.mRotation.x, vec3(1, 0, 0));
+		mat4 rotateY = rotate(mat4(), gMeshPose.mRotation.y, vec3(0, 1, 0));
+		mat4 rotateZ = rotate(mat4(), gMeshPose.mRotation.z, vec3(0, 0 ,1));
+		mat4 currRotation = rotateX * rotateY * rotateZ;
+
+		gMeshPose.mTransform = translate(mat4(), gMeshPose.mPosition)
+								* currRotation
+								* scale(mat4(), gMeshPose.mScale);
+		MVP = proj * view * gMeshPose.mTransform;
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
 		glEnableVertexAttribArray(0);
 		glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
@@ -207,7 +316,6 @@ int main(int argc, char** argv)
 		glfwPollEvents();
 	} 
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window));
-
 
 	glfwTerminate();
 	return 0;
