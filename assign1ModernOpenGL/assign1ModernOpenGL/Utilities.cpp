@@ -13,7 +13,7 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 		{
 			string currLine;
 			getline(fin, currLine);
-			vertexShaderCode += currLine;
+			vertexShaderCode += currLine + "\n";
 		}
 		fin.close();
 	}
@@ -32,7 +32,7 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 		{
 			string currLine;
 			getline(fin, currLine);
-			pixelShaderCode += currLine;
+			pixelShaderCode += currLine + "\n";
 		}
 		fin.close();
 	}
@@ -52,7 +52,7 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 
 	glGetShaderiv(vertexShaderID, GL_COMPILE_STATUS, &result);
 	glGetShaderiv(vertexShaderID, GL_INFO_LOG_LENGTH, &logLength);
-	if(logLength > 0)
+	if(logLength > 1)
 	{
 		vector<char> vertexShaderErrorMessage(logLength + 1);
 		glGetShaderInfoLog(vertexShaderID, logLength, nullptr, &vertexShaderErrorMessage[0]);
@@ -66,7 +66,7 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 
 	glGetShaderiv(pixelShaderID, GL_COMPILE_STATUS, &result);
 	glGetShaderiv(pixelShaderID, GL_INFO_LOG_LENGTH, &logLength);
-	if(logLength > 0)
+	if(logLength > 1)
 	{
 		vector<char> pixelShaderErrorMessage(logLength + 1);
 		glGetShaderInfoLog(pixelShaderID, logLength, nullptr, &pixelShaderErrorMessage[0]);
@@ -81,7 +81,7 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 
 	glGetProgramiv(programID, GL_LINK_STATUS, &result);
 	glGetProgramiv(programID, GL_INFO_LOG_LENGTH, &logLength);
-	if(logLength > 0)
+	if(logLength > 1)
 	{
 		vector<char> programErrorMessage(logLength + 1);
 		glGetProgramInfoLog(programID, logLength, nullptr, &programErrorMessage[0]);

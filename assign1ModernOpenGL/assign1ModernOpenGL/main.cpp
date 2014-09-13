@@ -4,6 +4,7 @@
 #include <vector>
 #include "Utilities.h"
 #include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 #include "glew/include/GL/glew.h"
 #include "glfw/include/GLFW/glfw3.h"
 #include "picLibrary/pic.h"
@@ -17,6 +18,11 @@ Pic * g_pHeightData;
 // Window size
 int windowWidth = 640;
 int windowHeight = 480;
+
+// Mesh configurations
+int XStep = 1;
+int ZStep = 1;
+
 
 void saveScreenshot(char *filename)
 {
@@ -58,6 +64,42 @@ GLFWwindow* CreateWindow(int InWidth, int InHeight)
 	return window;
 }
 
+void BuildHeightmap(int inXStart, int inYStart, int inZStart, unsigned int inXStep, unsigned int inZStep, vector<vec3>& outVertices, vector<unsigned short>& outIndices)
+{
+	// Get (x, y, z) for all vertices
+	outVertices.reserve(g_pHeightData->ny * g_pHeightData->nx);
+	for (int i = 0; i < g_pHeightData->ny; ++i)
+	{
+		int zPos = inZStart + i * inZStep; 
+		for (int j = 0; j < g_pHeightData->nx; ++j)
+		{
+			int xPos = inXStart + j * inXStep;
+			int yPos = static_cast<int> (g_pHeightData->pix[i * g_pHeightData->ny + j]);
+
+			outVertices.emplace_back(vec3(xPos, yPos, zPos));
+		}
+	}
+
+	// Get the indices for all triangles 
+	// for index buffer
+	unsigned int triangleCount = 0;
+	outIndices.resize((g_pHeightData->ny - 1) * (g_pHeightData->nx - 1 )* 2 * 3);
+	for(int i = 0; i < g_pHeightData->ny - 1; ++i)
+	{
+		for(int j = 0; j < g_pHeightData->nx - 1; ++j)
+		{
+			outIndices[triangleCount] = i * g_pHeightData->ny + j;	
+			outIndices[triangleCount + 1] = i * g_pHeightData->ny + (j + 1);
+			outIndices[triangleCount + 2] = (i + 1) * g_pHeightData->ny + j;
+			outIndices[triangleCount + 3] = (i + 1) * g_pHeightData->ny + j;
+			outIndices[triangleCount + 4] = i * g_pHeightData->ny + (j + 1);
+			outIndices[triangleCount + 5] = (i + 1) * g_pHeightData->ny + (j + 1);
+			
+			triangleCount += 6;
+		}
+	}
+}
+
 int main(int argc, char** argv)
 {
 	// I've set the argv[1] to spiral.jpg.
@@ -71,25 +113,6 @@ int main(int argc, char** argv)
 		getchar();
 		return -1;
 	}
-
-	g_pHeightData = jpeg_read((char*)argv[1], NULL);
-	if (!g_pHeightData)
-	{
-		cout << "error reading %s.\n" << argv[1];
-		getchar();
-		return -1;
-	}
-
-
-	for(int i = 0; i < g_pHeightData->ny; ++i)
-	{
-		for(int j = 0; j < g_pHeightData->nx; ++j)
-		{
-			unsigned char currPix = g_pHeightData->pix[i * g_pHeightData->ny + j];
-		}
-		cout << endl;
-	}
-
 
 	if(!glfwInit())
 	{
@@ -109,6 +132,7 @@ int main(int argc, char** argv)
 
 	glfwMakeContextCurrent(window);
 
+	glewExperimental = true;
 	if(glewInit() != GLEW_OK)
 	{
 		cout << "Cannot initialize GLEW. Press Enter to exit.\n";
@@ -118,10 +142,67 @@ int main(int argc, char** argv)
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
 	
-	glClearColor(0.0f, 0.0f, 0.5f, 0.0f);
+	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+	glFrontFace(GL_CW);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_BACK);
+
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	GLuint vertexArrayID;
+	glGenVertexArrays(1, &vertexArrayID);
+	glBindVertexArray(vertexArrayID);
+	
+	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
+	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
+	mat4 proj = perspective(60.0f, static_cast<float> (windowWidth) / windowHeight, 0.1f, 1000.0f);
+	mat4 view = lookAt(vec3(0, 500, 0), vec3(0, 0, 0), vec3(0, 0, -1));
+	mat4 model = mat4(1.0f);
+	mat4 MVP = proj * view * model;
+
+	g_pHeightData = jpeg_read((char*)argv[1], NULL);
+	if (!g_pHeightData)
+	{
+		cout << "error reading %s.\n" << argv[1];
+		getchar();
+		return -1;
+	}
+
+	vector<vec3> vertices;
+	vector<unsigned short> indices;
+	int upperLeftX = -g_pHeightData->nx / 2;
+	int upperLeftZ = -g_pHeightData->ny / 2;
+	BuildHeightmap(upperLeftX, 0, upperLeftZ, XStep, ZStep, vertices, indices);
+
+	
+
+	GLuint vertexBuffer;
+	glGenBuffers(1, &vertexBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+
+	GLuint indexBuffer;
+	glGenBuffers(1, &indexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+
+	glUseProgram(shaderProgramID);
+
 
 	do 
 	{
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
+		glEnableVertexAttribArray(0);
+		glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
+		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
+
+		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, nullptr);
+
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 	} 
