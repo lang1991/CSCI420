@@ -250,16 +250,6 @@ int main(int argc, char** argv)
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	GLuint vertexArrayID;
-	glGenVertexArrays(1, &vertexArrayID);
-	glBindVertexArray(vertexArrayID);
-	
-	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
-	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
-	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
-	mat4 view = lookAt(vec3(0, 500, 0), vec3(0, 0, 0), vec3(0, 0, -1));
-	mat4 MVP = proj * view * gMeshPose.mTransform;
-
 	g_pHeightData = jpeg_read((char*)argv[1], NULL);
 	if (!g_pHeightData)
 	{
@@ -274,15 +264,33 @@ int main(int argc, char** argv)
 	int upperLeftZ = -g_pHeightData->ny / 2;
 	BuildHeightmap(upperLeftX, 0, upperLeftZ, gXStep, gZStep, vertices, indices);
 
+
+	GLuint vertexArrayID;
+	glGenVertexArrays(1, &vertexArrayID);
+	glBindVertexArray(vertexArrayID);
+
 	GLuint vertexBuffer;
 	glGenBuffers(1, &vertexBuffer);
 	glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * vertices.size(), &vertices[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 	GLuint indexBuffer;
 	glGenBuffers(1, &indexBuffer);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(unsigned short), &indices[0], GL_STATIC_DRAW);
+	glBindVertexArray(0);
+	
+	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
+	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
+	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
+	mat4 view = lookAt(vec3(0, 500, 0), vec3(0, 0, 0), vec3(0, 0, -1));
+	mat4 MVP = proj * view * gMeshPose.mTransform;
+
+	
+
+	
 
 	glUseProgram(shaderProgramID);
 
@@ -304,12 +312,8 @@ int main(int argc, char** argv)
 								* scale(mat4(), gMeshPose.mScale);
 		MVP = proj * view * gMeshPose.mTransform;
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
-		glEnableVertexAttribArray(0);
-		glBindBuffer(GL_ARRAY_BUFFER, vertexBuffer);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexBuffer);
-
+		
+		glBindVertexArray(vertexArrayID);
 		glDrawElements(GL_TRIANGLES, indices.size(), GL_UNSIGNED_SHORT, nullptr);
 
 		glfwSwapBuffers(window);
