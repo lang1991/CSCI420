@@ -1,6 +1,7 @@
 #include "Utilities.h"
 #include "Track.h"
 #include "Camera.h"
+#include "StaticMesh.h"
 
 using namespace std;
 using namespace glm;
@@ -20,31 +21,31 @@ vector<vec3> gSplinePointPos;
 vector<vec3> gSplinePointColor;
 
 
-const float gROTATIONSPEED = 10.f;
+const float gROTATIONSPEED = 0.5f;
 const float gWALKSPEED = 5.0f;
 Camera gCamera = Camera(vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
-float prevTime = 0.0f;
-float currTime = 0.0f;
-float deltaTime = 0.0f;
+float gPrevTime = 0.0f;
+float gCurrTime = 0.0f;
+float gDeltaTime = 0.0f;
 
 void CalcSegmentsControlMatTimesBasis(vector<mat4x3>& OutResult)
 {
 	// Go through all the splines
-	for (unsigned int i = 0; i < gTrack.mNumOfSplines; ++i)
+	for (unsigned int i = 0; i < gTrack.mSplines.size(); ++i)
 	{
 		// Go through all the control points of the spline
-		for (unsigned int j = 1; j < gTrack.mSplines[i].mNumControlPoints - 2; ++j)
+		for (unsigned int j = 1; j < gTrack.mSplines[i].mPoints.size() - 2; ++j)
 		{
 			dvec3& p0 = gTrack.mSplines[i].mPoints[j - 1];
 			dvec3& p1 = gTrack.mSplines[i].mPoints[j];
 			dvec3& p2 = gTrack.mSplines[i].mPoints[j + 1];
 			dvec3& p3 = gTrack.mSplines[i].mPoints[j + 2];
 
-			mat4x3 controlMatrix(p0.x, p0.y, p0.z,
-				p1.x, p1.y, p1.z,
-				p2.x, p2.y, p2.z,
-				p3.x, p3.y, p3.z);
+			mat4x3 controlMatrix(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z),
+				static_cast<float> (p1.x), static_cast<float> (p1.y), static_cast<float> (p1.z),
+				static_cast<float> (p2.x), static_cast<float> (p2.y), static_cast<float> (p2.z),
+				static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));
 
 			OutResult.emplace_back(controlMatrix * gBasisMatrix);
 		}
@@ -79,7 +80,6 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 
 void saveScreenshot(char *filename){
 
-	int i, j;
 	Pic *in = NULL;
 	Pic *out = NULL;
 
@@ -120,29 +120,38 @@ void saveScreenshot(char *filename){
 
 void OnMouseEvent(GLFWwindow* InWindow)
 {
-	
+	double newMouseX;
+	double newMouseY;
+
+	glfwGetCursorPos(InWindow, &newMouseX, &newMouseY);
+
+
+	gCamera.LookLeftRight(static_cast<float> (-(newMouseX - gWindowWidth / 2) * gROTATIONSPEED));
+	gCamera.LookUpDown(static_cast<float> (-(newMouseY - gWindowHeight / 2) * gROTATIONSPEED));
+
+	glfwSetCursorPos(InWindow, static_cast<double> (gWindowWidth) / 2, static_cast<double> (gWindowHeight) / 2);
 }
 
 void OnKeyboardEvent(GLFWwindow* InWindow)
 {
 	if(glfwGetKey(InWindow, GLFW_KEY_W) == GLFW_PRESS)
 	{
-		gCamera.MoveForwardBack(deltaTime * gWALKSPEED);
+		gCamera.MoveForwardBack(gDeltaTime * gWALKSPEED);
 	}
 
 	if (glfwGetKey(InWindow, GLFW_KEY_S) == GLFW_PRESS)
 	{
-		gCamera.MoveForwardBack(-deltaTime * gWALKSPEED);
+		gCamera.MoveForwardBack(-gDeltaTime * gWALKSPEED);
 	}
 
 	if (glfwGetKey(InWindow, GLFW_KEY_A) == GLFW_PRESS)
 	{
-		gCamera.MoveLeftRight(-deltaTime * gWALKSPEED);
+		gCamera.MoveLeftRight(-gDeltaTime * gWALKSPEED);
 	}
 
 	if (glfwGetKey(InWindow, GLFW_KEY_D) == GLFW_PRESS)
 	{
-		gCamera.MoveLeftRight(deltaTime * gWALKSPEED);
+		gCamera.MoveLeftRight(gDeltaTime * gWALKSPEED);
 	}
 }
 
@@ -198,6 +207,8 @@ int main(int argc, char** argv)
 	}
 
 	glfwSetInputMode(window, GLFW_STICKY_KEYS, GL_TRUE);
+	glfwSetCursorPos(window, static_cast<double> (gWindowWidth) / 2, static_cast<double> (gWindowHeight) / 2);
+
 
 	glClearColor(0.5f, 0.5f, 0.5f, 0.0f);
 	glEnable(GL_DEPTH_TEST);
@@ -206,6 +217,12 @@ int main(int argc, char** argv)
 	glEnable(GL_CULL_FACE);
 	glCullFace(GL_BACK);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+
+	StaticMesh goundMesh(".//ground.itpmesh");
+
+
+
 
 	gTrack.LoadSplines(argv[1]);
 
@@ -218,7 +235,7 @@ int main(int argc, char** argv)
 	CalcSegmentsControlMatTimesBasis(gSegmentBasisMultiplyControl);
 	for(unsigned int i = 0; i < gSegmentBasisMultiplyControl.size(); ++i)
 	{
-		RecSubdiv(0, 1.0f, 0.1, i);
+		RecSubdiv(0, 1.0f, 0.1f, i);
 	}
 
 	vector<vec3> coordinateSystemVertices;
@@ -286,9 +303,10 @@ int main(int argc, char** argv)
 	glUseProgram(shaderProgramID);
 	do
 	{
-		currTime = glfwGetTime();
-		deltaTime = currTime - prevTime;
+		gCurrTime = static_cast<float> (glfwGetTime());
+		gDeltaTime = gCurrTime - gPrevTime;
 
+		OnMouseEvent(window);
 		OnKeyboardEvent(window);
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
@@ -298,15 +316,19 @@ int main(int argc, char** argv)
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 		glBindVertexArray(coordinateSystemVertexArray);
+		glLineWidth(5.0f);
 		glDrawArrays(GL_LINES, 0, 6);
 
+
+
 		glBindVertexArray(splineVertexArray);
+		glLineWidth(1.0f);
 		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		
-		prevTime = currTime;
+		gPrevTime = gCurrTime;
 	} 
 	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window));
 

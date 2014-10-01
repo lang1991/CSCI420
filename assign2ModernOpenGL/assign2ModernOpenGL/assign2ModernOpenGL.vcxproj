@@ -84,18 +84,22 @@
   <ItemGroup>
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="StaticMesh.cpp" />
     <ClCompile Include="Track.cpp" />
     <ClCompile Include="Utilities.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h" />
     <ClInclude Include="Spline.h" />
+    <ClInclude Include="StaticMesh.h" />
     <ClInclude Include="Track.h" />
     <ClInclude Include="Utilities.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="pixelShader.glsl" />
+    <None Include="pixelShaderPNT.glsl" />
     <None Include="vertexShader.glsl" />
+    <None Include="vertexShaderPNT.glsl" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

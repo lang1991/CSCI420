@@ -1,2 +1,6 @@
-1
+5
 splines/circle.sp
+splines/cs1.sp
+splines/goodRide.sp
+splines/leftturn.sp
+splines/rollerCoaster.sp

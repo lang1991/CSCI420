@@ -17,7 +17,7 @@ void Camera::LookLeftRight(float InDelta)
 void Camera::LookUpDown(float InDelta)
 {
 	mUp = normalize(rotate(mUp, InDelta, mRight));
-	mForward - normalize(rotate(mForward, InDelta, mRight));
+	mForward = normalize(rotate(mForward, InDelta, mRight));
 }
 
 void Camera::MoveForwardBack(float InDelta)
