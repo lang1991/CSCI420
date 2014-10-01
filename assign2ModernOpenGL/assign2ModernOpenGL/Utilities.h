@@ -3,6 +3,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <unordered_map>
 #include "glew/include/GL/glew.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -16,4 +17,5 @@ class Utilities
 {
 public:
 	static GLuint LoadShaders(const string& InVertexShaderPath, const string& InPixelShaderPath);
+	static GLuint LoadTexture(const string& InTexturePath);
 };

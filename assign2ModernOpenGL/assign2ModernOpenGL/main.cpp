@@ -15,7 +15,7 @@ Track gTrack;
 double gTension = 0.5;
 mat4 gBasisMatrix;
 
-vector<mat4x3> gSegmentBasisMultiplyControl;
+vector<dmat4x3> gSegmentBasisMultiplyControl;
 
 vector<vec3> gSplinePointPos;
 vector<vec3> gSplinePointColor;
@@ -29,7 +29,9 @@ float gPrevTime = 0.0f;
 float gCurrTime = 0.0f;
 float gDeltaTime = 0.0f;
 
-void CalcSegmentsControlMatTimesBasis(vector<mat4x3>& OutResult)
+unordered_map<string, GLuint> gTextureDict;
+
+void CalcSegmentsControlMatTimesBasis(vector<dmat4x3>& OutResult)
 {
 	// Go through all the splines
 	for (unsigned int i = 0; i < gTrack.mSplines.size(); ++i)
@@ -42,10 +44,17 @@ void CalcSegmentsControlMatTimesBasis(vector<mat4x3>& OutResult)
 			dvec3& p2 = gTrack.mSplines[i].mPoints[j + 1];
 			dvec3& p3 = gTrack.mSplines[i].mPoints[j + 2];
 
-			mat4x3 controlMatrix(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z),
+			vec3 fp0 = vec3(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z));
+			vec3 fp1 = vec3(static_cast<float> (p1.x), static_cast<float> (p1.y), static_cast<float> (p1.z));
+			vec3 fp2 = vec3(static_cast<float> (p2.x), static_cast<float> (p2.y), static_cast<float> (p2.z));
+			vec3 fp3 = vec3(static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));
+			
+			mat4x3 controlMatrix(fp0, fp1, fp2, fp3);
+
+			/*mat4x3 controlMatrix(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z),
 				static_cast<float> (p1.x), static_cast<float> (p1.y), static_cast<float> (p1.z),
 				static_cast<float> (p2.x), static_cast<float> (p2.y), static_cast<float> (p2.z),
-				static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));
+				static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));*/
 
 			OutResult.emplace_back(controlMatrix * gBasisMatrix);
 		}
@@ -56,11 +65,11 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 {
 	float umid = InU0 + (InU1 - InU0) / 2;
 
-	vec4 u0Vec = vec4(pow(InU0, 3), pow(InU0, 2), InU0, 1.0f);
-	vec4 u1Vec = vec4(pow(InU1, 3), pow(InU1, 2), InU1, 1.0f);
+	dvec4 u0Vec = dvec4(pow(InU0, 3), pow(InU0, 2), InU0, 1.0f);
+	dvec4 u1Vec = dvec4(pow(InU1, 3), pow(InU1, 2), InU1, 1.0f);
 
-	vec3 x0 = gSegmentBasisMultiplyControl[InSegIndex] * u0Vec;
-	vec3 x1 = gSegmentBasisMultiplyControl[InSegIndex] * u1Vec;
+	dvec3 x0 = gSegmentBasisMultiplyControl[InSegIndex] * u0Vec;
+	dvec3 x1 = gSegmentBasisMultiplyControl[InSegIndex] * u1Vec;
 
 
 	if (length(x1 - x0) > InMaxLineLength)
@@ -219,7 +228,7 @@ int main(int argc, char** argv)
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 
-	StaticMesh goundMesh(".//ground.itpmesh");
+	StaticMesh groundMesh(".//assets//ground.itpmesh");
 
 
 
@@ -254,6 +263,10 @@ int main(int argc, char** argv)
 	coordinateSystemVertices.emplace_back(vec3(0.f, 0.f, 100.f));
 	coordinateSystemColors.emplace_back(vec3(0.f, 0.f, 1.f));
 	coordinateSystemColors.emplace_back(vec3(0.f, 0.f, 1.f));
+
+	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
+	GLuint pntShaderProgramID = Utilities::LoadShaders("vertexShaderPNT.glsl", "pixelShaderPNT.glsl");
+
 
 	GLuint coordinateSystemVertexArray;
 	GLuint coordinateSystemVerticesBuffer;
@@ -293,14 +306,40 @@ int main(int argc, char** argv)
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
+	glBindVertexArray(0);
+
+	GLuint pntVertexArray;
+	glGenVertexArrays(1, &pntVertexArray);
+	glBindVertexArray(pntVertexArray);
+
+	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mPosBuffer);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mNormalBuffer);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mUVBuffer);
+	glEnableVertexAttribArray(2);
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, groundMesh.mIndexBuffer);
+
+
+	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
+	GLuint MVPMatrixIDPNT = glGetUniformLocation(pntShaderProgramID, "MVP");
+	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
+
+
+
+	GLuint textureID = glGetUniformLocation(pntShaderProgramID, "textureSampler");
 
 	glBindVertexArray(0);
 
-
-	GLuint shaderProgramID = Utilities::LoadShaders("vertexShader.glsl", "pixelShader.glsl");
-	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
-	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
-	glUseProgram(shaderProgramID);
+	
+	
+	
 	do
 	{
 		gCurrTime = static_cast<float> (glfwGetTime());
@@ -311,6 +350,7 @@ int main(int argc, char** argv)
 		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 		
 
+		glUseProgram(shaderProgramID);
 		gCamera.UpdateView();
 		mat4 MVP = proj * gCamera.mViewMatrix * mat4();
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
@@ -319,11 +359,21 @@ int main(int argc, char** argv)
 		glLineWidth(5.0f);
 		glDrawArrays(GL_LINES, 0, 6);
 
-
-
 		glBindVertexArray(splineVertexArray);
 		glLineWidth(1.0f);
 		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());
+
+		glUseProgram(pntShaderProgramID);
+		glUniformMatrix4fv(MVPMatrixIDPNT, 1, GL_FALSE, &MVP[0][0]);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, groundMesh.mTextureIndex);
+		glUniform1i(textureID, 0);
+		glBindVertexArray(pntVertexArray);
+		glDrawElements(GL_TRIANGLES, groundMesh.mIndex.size(), GL_UNSIGNED_SHORT, nullptr);
+
+
+
+
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

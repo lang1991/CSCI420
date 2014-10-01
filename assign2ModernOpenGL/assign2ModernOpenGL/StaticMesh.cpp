@@ -6,6 +6,13 @@ StaticMesh::StaticMesh(const string& InMeshPath)
 	ifstream fin(InMeshPath.c_str());
 	if(fin.is_open())
 	{
+		string texturePath;
+		getline(fin, texturePath);
+		int lastSlashPos = texturePath.find_last_of('/');
+		texturePath = texturePath.substr(lastSlashPos + 1, texturePath.size() - lastSlashPos);
+		texturePath = ".//assets//" + texturePath;
+		mTextureIndex = Utilities::LoadTexture(texturePath);
+
 		unsigned int triangleCount = 0;
 		fin >> triangleCount;
 		for(unsigned int i = 0 ; i < triangleCount; ++i)

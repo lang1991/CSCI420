@@ -93,3 +93,32 @@ GLuint Utilities::LoadShaders(const string& InVertexShaderPath, const string& In
 
 	return programID;
 }
+
+GLuint Utilities::LoadTexture(const string& InTexturePath)
+{
+	Pic* texture;
+	char* fileName = const_cast<char*> (InTexturePath.c_str());
+	texture = jpeg_read(fileName, NULL);
+
+	if(!texture)
+	{
+		throw exception("Cannot open texture file");
+	}
+
+	int width = texture->nx;
+	int height = texture->ny;
+	
+	GLuint textureID;
+	glGenTextures(1, &textureID);
+	glBindTexture(GL_TEXTURE_2D, textureID);
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, texture->pix);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+	glGenerateMipmap(GL_TEXTURE_2D);
+
+	free(texture);
+
+	return textureID;
+}

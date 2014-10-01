@@ -15,10 +15,13 @@ public:
 	vector<vec2> mUV;
 	vector<unsigned short> mIndex;
 
+	GLuint mTextureIndex;
+
 public:
 	StaticMesh(const string& InMeshPath);
 
 private:
 	vec3 ReadVec3(ifstream& InFin);
 	vec2 ReadVec2(ifstream& InFin);
+
 };
