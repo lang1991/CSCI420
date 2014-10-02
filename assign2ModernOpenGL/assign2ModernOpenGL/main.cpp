@@ -21,8 +21,8 @@ vector<vec3> gSplinePointPos;
 vector<vec3> gSplinePointColor;
 
 
-const float gROTATIONSPEED = 0.5f;
-const float gWALKSPEED = 5.0f;
+const float gROTATIONSPEED = 0.25f;
+const float gWALKSPEED = 50.0f;
 Camera gCamera = Camera(vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
 
 float gPrevTime = 0.0f;
@@ -228,13 +228,18 @@ int main(int argc, char** argv)
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 
-	StaticMesh groundMesh(".//assets//ground.itpmesh");
+	/*StaticMesh groundMesh(".//assets//ground.itpmesh");
+	groundMesh.mTransform = translate(vec3(0.0f, 0.0f, 0.0f));*/
 
+	StaticMesh groundMesh(".//assets//desert.itpmesh");
+	groundMesh.mTransform = translate(vec3(0.0f, -300.0f, 0.0f));
 
+	StaticMesh skybox(".//assets//skybox.itpmesh");
+	skybox.mTransform = translate(vec3(0.0f, -400.0f, 0.0f)) * scale(vec3(2.0f, 2.0f, 2.0f));
 
+	gCamera.mPos = vec3(10.0f, 10.0f, 100.0f);
 
 	gTrack.LoadSplines(argv[1]);
-
 	vec4 row1(-gTension, 2 - gTension, gTension - 2, gTension);
 	vec4 row2(2 * gTension, gTension - 3, 3 - 2 * gTension, -gTension);
 	vec4 row3(-gTension, 0, gTension, 0);
@@ -307,38 +312,13 @@ int main(int argc, char** argv)
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
 	glBindVertexArray(0);
-
-	GLuint pntVertexArray;
-	glGenVertexArrays(1, &pntVertexArray);
-	glBindVertexArray(pntVertexArray);
-
-	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mPosBuffer);
-	glEnableVertexAttribArray(0);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mNormalBuffer);
-	glEnableVertexAttribArray(1);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-	glBindBuffer(GL_ARRAY_BUFFER, groundMesh.mUVBuffer);
-	glEnableVertexAttribArray(2);
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, 0, nullptr);
-
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, groundMesh.mIndexBuffer);
-
+	
 
 	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
 	GLuint MVPMatrixIDPNT = glGetUniformLocation(pntShaderProgramID, "MVP");
-	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 2000.0f);
-
-
-
 	GLuint textureID = glGetUniformLocation(pntShaderProgramID, "textureSampler");
-
-	glBindVertexArray(0);
-
 	
-	
+	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 5000.0f);
 	
 	do
 	{
@@ -347,12 +327,13 @@ int main(int argc, char** argv)
 
 		OnMouseEvent(window);
 		OnKeyboardEvent(window);
-		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-		
-
-		glUseProgram(shaderProgramID);
 		gCamera.UpdateView();
-		mat4 MVP = proj * gCamera.mViewMatrix * mat4();
+		mat4 VP = proj * gCamera.mViewMatrix;
+
+
+		glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+		glUseProgram(shaderProgramID);
+		mat4 MVP = VP * mat4();
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
 		glBindVertexArray(coordinateSystemVertexArray);
@@ -362,8 +343,18 @@ int main(int argc, char** argv)
 		glBindVertexArray(splineVertexArray);
 		glLineWidth(1.0f);
 		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());
+		glBindVertexArray(0);
+
 
 		glUseProgram(pntShaderProgramID);
+		groundMesh.Render(pntShaderProgramID, VP);
+
+		glCullFace(GL_FRONT);
+		skybox.Render(pntShaderProgramID, VP);
+		glCullFace(GL_BACK);
+
+
+		/*MVP = VP * groundMesh.mTransform;	
 		glUniformMatrix4fv(MVPMatrixIDPNT, 1, GL_FALSE, &MVP[0][0]);
 		glActiveTexture(GL_TEXTURE0);
 		glBindTexture(GL_TEXTURE_2D, groundMesh.mTextureIndex);
@@ -371,10 +362,17 @@ int main(int argc, char** argv)
 		glBindVertexArray(pntVertexArray);
 		glDrawElements(GL_TRIANGLES, groundMesh.mIndex.size(), GL_UNSIGNED_SHORT, nullptr);
 
+		glCullFace(GL_FRONT);
+		MVP = VP * skybox.mTransform;
+		glUniformMatrix4fv(MVPMatrixIDPNT, 1, GL_FALSE, &MVP[0][0]);
+		glActiveTexture(GL_TEXTURE0);
+		glBindTexture(GL_TEXTURE_2D, skybox.mTextureIndex);
+		glUniform1i(textureID, 0);
+		glBindVertexArray(pntVertexArray);
+		glDrawElements(GL_TRIANGLES, skybox.mIndex.size(), GL_UNSIGNED_SHORT, nullptr);
 
 
-
-
+		glCullFace(GL_BACK);*/
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		

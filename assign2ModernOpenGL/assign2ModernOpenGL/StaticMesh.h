@@ -5,6 +5,7 @@ using namespace glm;
 class StaticMesh
 {
 public:
+	GLuint mVertexArray;
 	GLuint mIndexBuffer;
 	GLuint mPosBuffer;
 	GLuint mNormalBuffer;
@@ -17,8 +18,11 @@ public:
 
 	GLuint mTextureIndex;
 
+	mat4 mTransform;
+
 public:
 	StaticMesh(const string& InMeshPath);
+	void Render(GLuint InShaderProgramID, const mat4& InVP);
 
 private:
 	vec3 ReadVec3(ifstream& InFin);
