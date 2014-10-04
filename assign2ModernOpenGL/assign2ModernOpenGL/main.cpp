@@ -17,13 +17,18 @@ mat4 gBasisMatrix;
 
 vector<dmat4x3> gSegmentBasisMultiplyControl;
 
+const float gSUBDIVISION = 0.1f;
+int gCurrentPoint = 0; 
 vector<vec3> gSplinePointPos;
+vector<vec3> gSplinePointTangent;
 vector<vec3> gSplinePointColor;
-
+float gMaxHeight = 0.0f;
+const float gGravity = 9.8f;
 
 const float gROTATIONSPEED = 0.25f;
 const float gWALKSPEED = 50.0f;
 Camera gCamera = Camera(vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
+
 
 float gPrevTime = 0.0f;
 float gCurrTime = 0.0f;
@@ -51,11 +56,6 @@ void CalcSegmentsControlMatTimesBasis(vector<dmat4x3>& OutResult)
 			
 			mat4x3 controlMatrix(fp0, fp1, fp2, fp3);
 
-			/*mat4x3 controlMatrix(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z),
-				static_cast<float> (p1.x), static_cast<float> (p1.y), static_cast<float> (p1.z),
-				static_cast<float> (p2.x), static_cast<float> (p2.y), static_cast<float> (p2.z),
-				static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));*/
-
 			OutResult.emplace_back(controlMatrix * gBasisMatrix);
 		}
 	}
@@ -68,10 +68,15 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 	dvec4 u0Vec = dvec4(pow(InU0, 3), pow(InU0, 2), InU0, 1.0f);
 	dvec4 u1Vec = dvec4(pow(InU1, 3), pow(InU1, 2), InU1, 1.0f);
 
+	dvec4 u0Tangent = dvec4(3 * pow(InU0, 2), 2 * InU0, 1, 0);
+	dvec4 u1Tangent = dvec4(3 * pow(InU1, 2), 2 * InU1, 1, 0);
+
 	dvec3 x0 = gSegmentBasisMultiplyControl[InSegIndex] * u0Vec;
 	dvec3 x1 = gSegmentBasisMultiplyControl[InSegIndex] * u1Vec;
 
-
+	dvec3 x0Tangent = gSegmentBasisMultiplyControl[InSegIndex] * u0Tangent;
+	dvec3 x1Tangent = gSegmentBasisMultiplyControl[InSegIndex] * u1Tangent;
+	
 	if (length(x1 - x0) > InMaxLineLength)
 	{
 		RecSubdiv(InU0, umid, InMaxLineLength, InSegIndex);
@@ -80,9 +85,11 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 	else
 	{
 		gSplinePointPos.emplace_back(vec3(x0.x, x0.y, x0.z)); 
+		gSplinePointTangent.emplace_back(normalize(x0Tangent));
 		gSplinePointColor.emplace_back(vec3(1.0f, 0.0f, 0.0f));
-		
+
 		gSplinePointPos.emplace_back(vec3(x1.x, x1.y, x1.z));
+		gSplinePointTangent.emplace_back(normalize(x1Tangent));
 		gSplinePointColor.emplace_back(vec3(1.0f, 0.0f, 0.0f));
 	}
 }
@@ -173,7 +180,7 @@ GLFWwindow* CreateWindow(int InWidth, int InHeight)
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 	// Open a window and create its OpenGL context
-	GLFWwindow* window = glfwCreateWindow(InWidth, InHeight, "Assignment 1", nullptr, nullptr);
+	GLFWwindow* window = glfwCreateWindow(InWidth, InHeight, "Assignment 2", nullptr, nullptr);
 
 	return window;
 }
@@ -186,9 +193,6 @@ int main(int argc, char** argv)
 		exit(0);
 	}
 	
-	Track track;
-	track.LoadSplines(argv[1]);
-
 	if (!glfwInit())
 	{
 		cout << "Cannot initialize GLFW. Press Enter to exit.\n";
@@ -237,9 +241,14 @@ int main(int argc, char** argv)
 	StaticMesh skybox(".//assets//skybox.itpmesh");
 	skybox.mTransform = translate(vec3(0.0f, -400.0f, 0.0f)) * scale(vec3(2.0f, 2.0f, 2.0f));
 
-	gCamera.mPos = vec3(10.0f, 10.0f, 100.0f);
+	gCamera.mPos = vec3(0.0f, 0.0f, 0.0f);
 
-	gTrack.LoadSplines(argv[1]);
+	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 0, -100));
+	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20)); 
+	splineTransform = transpose(splineTransform);
+
+	gTrack.LoadSplines(argv[1], splineTransform);
+
 	vec4 row1(-gTension, 2 - gTension, gTension - 2, gTension);
 	vec4 row2(2 * gTension, gTension - 3, 3 - 2 * gTension, -gTension);
 	vec4 row3(-gTension, 0, gTension, 0);
@@ -249,7 +258,7 @@ int main(int argc, char** argv)
 	CalcSegmentsControlMatTimesBasis(gSegmentBasisMultiplyControl);
 	for(unsigned int i = 0; i < gSegmentBasisMultiplyControl.size(); ++i)
 	{
-		RecSubdiv(0, 1.0f, 0.1f, i);
+		RecSubdiv(0, 1.0f, gSUBDIVISION, i);
 	}
 
 	vector<vec3> coordinateSystemVertices;
@@ -320,6 +329,15 @@ int main(int argc, char** argv)
 	
 	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 5000.0f);
 	
+
+	gCurrentPoint = 0;
+	gMaxHeight = gSplinePointPos[gCurrentPoint].y;
+
+	gCamera.mPos = gSplinePointPos[++gCurrentPoint];
+	gCamera.mForward = gSplinePointTangent[gCurrentPoint];
+	gCamera.mRight = vec3(0.0f, 0.0f, -1.0f);
+	gCamera.mUp = cross(gCamera.mRight, gCamera.mForward);
+
 	do
 	{
 		gCurrTime = static_cast<float> (glfwGetTime());
@@ -352,6 +370,23 @@ int main(int argc, char** argv)
 		glCullFace(GL_FRONT);
 		skybox.Render(pntShaderProgramID, VP);
 		glCullFace(GL_BACK);
+
+		
+
+		float speed = pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5);
+		gCurrentPoint += static_cast<int> (speed);
+
+		if (gCurrentPoint >= gSplinePointPos.size())
+		{
+			gCurrentPoint = 1;
+		}
+
+		gCamera.mPos = gSplinePointPos[gCurrentPoint];
+
+		gCamera.mForward = gSplinePointTangent[gCurrentPoint];
+		gCamera.mUp = cross(gCamera.mRight, gCamera.mForward);
+		gCamera.mRight = cross(gCamera.mForward, gCamera.mUp);
+		
 
 
 		/*MVP = VP * groundMesh.mTransform;	

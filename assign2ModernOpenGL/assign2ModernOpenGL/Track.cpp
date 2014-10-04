@@ -4,7 +4,7 @@ Track::Track() :
 mNumOfSplines(0)
 {}
 
-int Track::LoadSplines(const string& InTrackPath)
+int Track::LoadSplines(const string& InTrackPath, const dmat4& InTransform)
 {
 	char *cName = (char *)malloc(128 * sizeof(char));
 	FILE *fileList;
@@ -52,7 +52,10 @@ int Track::LoadSplines(const string& InTrackPath)
 			&y,
 			&z) != EOF) 
 		{
-			newSpline.mPoints.emplace_back(dvec3(x, y, z));
+			dvec4 transformedPos = dvec4(x, y, z, 1.0);
+			transformedPos = transformedPos * InTransform;
+
+			newSpline.mPoints.emplace_back(dvec3(transformedPos.x, transformedPos.y, transformedPos.z));
 		}
 		mSplines.emplace_back(newSpline);
 	}

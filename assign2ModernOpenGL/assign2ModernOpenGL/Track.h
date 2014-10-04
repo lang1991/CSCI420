@@ -9,5 +9,5 @@ public:
 
 public:
 	Track();
-	int LoadSplines(const string& InTrackPath);
+	int LoadSplines(const string& InTrackPath, const dmat4& InTransform);
 };
