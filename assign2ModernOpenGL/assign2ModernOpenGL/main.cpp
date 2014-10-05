@@ -20,10 +20,18 @@ vector<dmat4x3> gSegmentBasisMultiplyControl;
 const float gSUBDIVISION = 0.1f;
 int gCurrentPoint = 0; 
 vector<vec3> gSplinePointPos;
+vector<vec3> gSplinePointNormal;
 vector<vec3> gSplinePointTangent;
+vector<vec3> gSplinePointBinormal;
 vector<vec3> gSplinePointColor;
+
+vector<vec3> gTrackPos;
+vector<vec3> gTrackColor;
+vector<unsigned int> gTrackIndex;
+
 float gMaxHeight = 0.0f;
 const float gGravity = 9.8f;
+const float gTrackScale = 2.0f;
 
 const float gROTATIONSPEED = 0.25f;
 const float gWALKSPEED = 50.0f;
@@ -35,6 +43,79 @@ float gCurrTime = 0.0f;
 float gDeltaTime = 0.0f;
 
 unordered_map<string, GLuint> gTextureDict;
+
+void BuildTrackMesh(vector<vec3>& OutVertexBuffer, vector<vec3>& OutColorBuffer, vector<unsigned int>& OutIndexBuffer)
+{
+	for(unsigned int i = 0; i < gSplinePointPos.size(); ++i)
+	{
+		if(i != gSplinePointPos.size() - 1)
+		{
+			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBuffer.emplace_back(i * 4 + 2);
+			OutIndexBuffer.emplace_back(i * 4 + 1);
+
+			OutIndexBuffer.emplace_back(i * 4 + 2);
+			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBuffer.emplace_back(i * 4 + 3);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBuffer.emplace_back(i * 4 + 2);
+			OutIndexBuffer.emplace_back(i * 4 + 3);
+
+			OutIndexBuffer.emplace_back(i * 4 + 3);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
+			OutIndexBuffer.emplace_back(i * 4 + 1);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBuffer.emplace_back(i * 4 + 1);
+			OutIndexBuffer.emplace_back(i * 4 + 2);
+
+			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBuffer.emplace_back(i * 4 + 1);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
+			OutIndexBuffer.emplace_back((i + 1) * 4);
+			OutIndexBuffer.emplace_back(i * 4);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
+			OutIndexBuffer.emplace_back(i * 4 + 3);
+			OutIndexBuffer.emplace_back(i * 4);
+
+			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBuffer.emplace_back((i + 1) * 4);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
+			OutIndexBuffer.emplace_back((i + 1) * 4);
+
+			OutIndexBuffer.emplace_back((i + 1) * 4);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
+			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+		}
+		
+
+		vec3 p0 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i] + gSplinePointNormal[i]) - gSplinePointNormal[i];
+		vec3 p1 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
+		vec3 p2 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
+		vec3 p3 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i] - gSplinePointNormal[i]) - gSplinePointNormal[i];
+
+		OutVertexBuffer.emplace_back(p0);
+		OutVertexBuffer.emplace_back(p1);
+		OutVertexBuffer.emplace_back(p2);
+		OutVertexBuffer.emplace_back(p3);
+	
+		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
+		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
+		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
+		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
+	}
+}
 
 void CalcSegmentsControlMatTimesBasis(vector<dmat4x3>& OutResult)
 {
@@ -239,7 +320,7 @@ int main(int argc, char** argv)
 	groundMesh.mTransform = translate(vec3(0.0f, -300.0f, 0.0f));
 
 	StaticMesh skybox(".//assets//skybox.itpmesh");
-	skybox.mTransform = translate(vec3(0.0f, -400.0f, 0.0f)) * scale(vec3(2.0f, 2.0f, 2.0f));
+	skybox.mTransform = translate(vec3(0.0f, -400.0f, 0.0f)) * scale(vec3(2.0f, 4.0f, 2.0f));
 
 	gCamera.mPos = vec3(0.0f, 0.0f, 0.0f);
 
@@ -260,6 +341,24 @@ int main(int argc, char** argv)
 	{
 		RecSubdiv(0, 1.0f, gSUBDIVISION, i);
 	}
+
+	gCurrentPoint = 0;
+	gMaxHeight = 1000.0f;
+
+
+	gSplinePointBinormal.reserve(gSplinePointPos.size());
+	gSplinePointNormal.reserve(gSplinePointPos.size());
+
+	gSplinePointBinormal.emplace_back(vec3(0.0f, 0.0f, 1.0f));
+	gSplinePointNormal.emplace_back(normalize(cross(gSplinePointBinormal[0], gSplinePointTangent[0])));
+	for(unsigned int i = 1; i < gSplinePointPos.size(); ++i)
+	{
+		gSplinePointNormal.emplace_back(normalize(cross(gSplinePointBinormal[i - 1], gSplinePointTangent[i])));
+		gSplinePointBinormal.emplace_back(normalize(cross(gSplinePointTangent[i], gSplinePointNormal[i])));
+	}
+
+
+	BuildTrackMesh(gTrackPos, gTrackColor, gTrackIndex);
 
 	vector<vec3> coordinateSystemVertices;
 	vector<vec3> coordinateSystemColors;
@@ -289,6 +388,11 @@ int main(int argc, char** argv)
 	GLuint splineVertexArray;
 	GLuint splineVerticesBuffer;
 	GLuint splineColorBuffer;
+
+	GLuint trackVertexArray;
+	GLuint trackVerticesBuffer;
+	GLuint trackColorBuffer;
+	GLuint trackIndexBuffer;
 
 	glGenVertexArrays(1, &coordinateSystemVertexArray);
 	glBindVertexArray(coordinateSystemVertexArray);
@@ -320,7 +424,28 @@ int main(int argc, char** argv)
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
+	glGenVertexArrays(1, &trackVertexArray);
+	glBindVertexArray(trackVertexArray);
+
+	glGenBuffers(1, &trackVerticesBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, trackVerticesBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackPos.size(), &gTrackPos[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glGenBuffers(1, &trackColorBuffer);
+	glBindBuffer(GL_ARRAY_BUFFER, trackColorBuffer);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackColor.size(), &gTrackColor[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glGenBuffers(1, &trackIndexBuffer);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, trackIndexBuffer);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * gTrackIndex.size(), &gTrackIndex[0], GL_STATIC_DRAW);
+
 	glBindVertexArray(0);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	
 
 	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
@@ -329,15 +454,6 @@ int main(int argc, char** argv)
 	
 	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 5000.0f);
 	
-
-	gCurrentPoint = 0;
-	gMaxHeight = gSplinePointPos[gCurrentPoint].y;
-
-	gCamera.mPos = gSplinePointPos[++gCurrentPoint];
-	gCamera.mForward = gSplinePointTangent[gCurrentPoint];
-	gCamera.mRight = vec3(0.0f, 0.0f, -1.0f);
-	gCamera.mUp = cross(gCamera.mRight, gCamera.mForward);
-
 	do
 	{
 		gCurrTime = static_cast<float> (glfwGetTime());
@@ -354,15 +470,20 @@ int main(int argc, char** argv)
 		mat4 MVP = VP * mat4();
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
-		glBindVertexArray(coordinateSystemVertexArray);
+		/*glBindVertexArray(coordinateSystemVertexArray);
 		glLineWidth(5.0f);
-		glDrawArrays(GL_LINES, 0, 6);
+		glDrawArrays(GL_LINES, 0, 6);*/
 
-		glBindVertexArray(splineVertexArray);
+		/*glBindVertexArray(splineVertexArray);
 		glLineWidth(1.0f);
-		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());
+		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());*/
+
+		glBindVertexArray(trackVertexArray);
+		glDrawElements(GL_TRIANGLES, gTrackIndex.size(), GL_UNSIGNED_INT, nullptr);
+
 		glBindVertexArray(0);
 
+		
 
 		glUseProgram(pntShaderProgramID);
 		groundMesh.Render(pntShaderProgramID, VP);
@@ -372,42 +493,21 @@ int main(int argc, char** argv)
 		glCullFace(GL_BACK);
 
 		
+		/*gCamera.mPos = gSplinePointPos[gCurrentPoint];
+		gCamera.mForward = gSplinePointTangent[gCurrentPoint];
+		gCamera.mUp = gSplinePointNormal[gCurrentPoint];
+		gCamera.mRight = gSplinePointBinormal[gCurrentPoint];*/
 
 		float speed = pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5);
 		gCurrentPoint += static_cast<int> (speed);
 
 		if (gCurrentPoint >= gSplinePointPos.size())
 		{
-			gCurrentPoint = 1;
+			gCurrentPoint = 0;
 		}
 
-		gCamera.mPos = gSplinePointPos[gCurrentPoint];
-
-		gCamera.mForward = gSplinePointTangent[gCurrentPoint];
-		gCamera.mUp = cross(gCamera.mRight, gCamera.mForward);
-		gCamera.mRight = cross(gCamera.mForward, gCamera.mUp);
-		
 
 
-		/*MVP = VP * groundMesh.mTransform;	
-		glUniformMatrix4fv(MVPMatrixIDPNT, 1, GL_FALSE, &MVP[0][0]);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, groundMesh.mTextureIndex);
-		glUniform1i(textureID, 0);
-		glBindVertexArray(pntVertexArray);
-		glDrawElements(GL_TRIANGLES, groundMesh.mIndex.size(), GL_UNSIGNED_SHORT, nullptr);
-
-		glCullFace(GL_FRONT);
-		MVP = VP * skybox.mTransform;
-		glUniformMatrix4fv(MVPMatrixIDPNT, 1, GL_FALSE, &MVP[0][0]);
-		glActiveTexture(GL_TEXTURE0);
-		glBindTexture(GL_TEXTURE_2D, skybox.mTextureIndex);
-		glUniform1i(textureID, 0);
-		glBindVertexArray(pntVertexArray);
-		glDrawElements(GL_TRIANGLES, skybox.mIndex.size(), GL_UNSIGNED_SHORT, nullptr);
-
-
-		glCullFace(GL_BACK);*/
 		glfwSwapBuffers(window);
 		glfwPollEvents();
 		
