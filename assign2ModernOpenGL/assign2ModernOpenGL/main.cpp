@@ -30,7 +30,7 @@ vector<vec3> gTrackColor;
 vector<unsigned int> gTrackIndex;
 
 float gMaxHeight = 0.0f;
-const float gGravity = 9.8f;
+const float gGravity = 3.5f;
 const float gTrackScale = 2.0f;
 
 const float gROTATIONSPEED = 0.25f;
@@ -316,15 +316,27 @@ int main(int argc, char** argv)
 	/*StaticMesh groundMesh(".//assets//ground.itpmesh");
 	groundMesh.mTransform = translate(vec3(0.0f, 0.0f, 0.0f));*/
 
-	StaticMesh groundMesh(".//assets//desert.itpmesh");
-	groundMesh.mTransform = translate(vec3(0.0f, -300.0f, 0.0f));
+	StaticMesh groundMesh(".//assets//ground.itpmesh");
+	groundMesh.mTransform = translate(vec3(0.0f, 0.0f, 0.0f));
 
 	StaticMesh skybox(".//assets//skybox.itpmesh");
-	skybox.mTransform = translate(vec3(0.0f, -400.0f, 0.0f)) * scale(vec3(2.0f, 4.0f, 2.0f));
+	skybox.mTransform = translate(vec3(0.0f, -100.0f, 0.0f)) * scale(vec3(2.0f, 4.0f, 2.0f));
+
+	StaticMesh house(".//assets//house.itpmesh");
+	house.mTransform = translate(vec3(0.0f, 0.0f, -450.0f)) * rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(10.0f, 10.0f, 10.0f));
+
+	StaticMesh tank(".//assets//tank.itpmesh");
+	tank.mTransform = translate(vec3(-450.0f, 0.0f, -450.0f)) * rotate(90.0f, vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(0.3f, 0.3f, 0.3f));
+
+	StaticMesh dragon(".//assets//dragon.itpmesh");
+	dragon.mTransform = translate(vec3(40.0f, 450.0f, 400.0f)) * rotate(0.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(0.2f, 0.2f, 0.2f));
+
+	StaticMesh helicopter(".//assets//helicopter.itpmesh");
+	helicopter.mTransform = translate(vec3(150.0f, 1000.0f, -300.0f)) * rotate(-130.0f, vec3(1.0f, 0.0f, 0.0f)) * scale(vec3(3.0f, 3.0f, 3.0f));
 
 	gCamera.mPos = vec3(0.0f, 0.0f, 0.0f);
 
-	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 0, -100));
+	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 20, -100));
 	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20)); 
 	splineTransform = transpose(splineTransform);
 
@@ -343,13 +355,13 @@ int main(int argc, char** argv)
 	}
 
 	gCurrentPoint = 0;
-	gMaxHeight = 1000.0f;
+	gMaxHeight = 800.0f;
 
 
 	gSplinePointBinormal.reserve(gSplinePointPos.size());
 	gSplinePointNormal.reserve(gSplinePointPos.size());
 
-	gSplinePointBinormal.emplace_back(vec3(0.0f, 0.0f, 1.0f));
+	gSplinePointBinormal.emplace_back(vec3(-1.0f, 0.0f, 0.0f));
 	gSplinePointNormal.emplace_back(normalize(cross(gSplinePointBinormal[0], gSplinePointTangent[0])));
 	for(unsigned int i = 1; i < gSplinePointPos.size(); ++i)
 	{
@@ -487,16 +499,20 @@ int main(int argc, char** argv)
 
 		glUseProgram(pntShaderProgramID);
 		groundMesh.Render(pntShaderProgramID, VP);
+		house.Render(pntShaderProgramID, VP);
+		tank.Render(pntShaderProgramID, VP);
+		dragon.Render(pntShaderProgramID, VP);
+		helicopter.Render(pntShaderProgramID, VP);
 
 		glCullFace(GL_FRONT);
 		skybox.Render(pntShaderProgramID, VP);
 		glCullFace(GL_BACK);
 
 		
-		/*gCamera.mPos = gSplinePointPos[gCurrentPoint];
+		gCamera.mPos = gSplinePointPos[gCurrentPoint];
 		gCamera.mForward = gSplinePointTangent[gCurrentPoint];
 		gCamera.mUp = gSplinePointNormal[gCurrentPoint];
-		gCamera.mRight = gSplinePointBinormal[gCurrentPoint];*/
+		gCamera.mRight = gSplinePointBinormal[gCurrentPoint];
 
 		float speed = pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5);
 		gCurrentPoint += static_cast<int> (speed);
@@ -505,8 +521,6 @@ int main(int argc, char** argv)
 		{
 			gCurrentPoint = 0;
 		}
-
-
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

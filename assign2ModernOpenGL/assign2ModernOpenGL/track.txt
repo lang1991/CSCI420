@@ -1,2 +1,2 @@
 1
-splines/rollerCoaster.sp
+splines/myGoodRide.sp
