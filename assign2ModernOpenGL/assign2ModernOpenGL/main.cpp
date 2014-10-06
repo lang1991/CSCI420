@@ -32,12 +32,12 @@ vector<unsigned int> gTrackIndex;
 
 float gMaxHeight = 0.0f;
 const float gGravity = 3.5f;
-const float gTrackScale = 2.0f;
+const float gTrackScale = 0.3f;
 
 const float gROTATIONSPEED = 0.25f;
 const float gWALKSPEED = 50.0f;
 Camera gCamera = Camera(vec3(0.0f, 0.0f, 10.0f), vec3(0.0f, 0.0f, -1.0f), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f, 1.0f, 0.0f));
-
+bool gFreeCamera = false;
 
 float gPrevTime = 0.0f;
 float gCurrTime = 0.0f;
@@ -101,10 +101,10 @@ void BuildTrackMesh(vector<vec3>& OutVertexBuffer, vector<vec3>& OutColorBuffer,
 		}
 		
 
-		vec3 p0 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i] + gSplinePointNormal[i]) - gSplinePointNormal[i];
+		vec3 p0 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i] + gSplinePointNormal[i]) - 0.2f * gSplinePointNormal[i];
 		vec3 p1 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
 		vec3 p2 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
-		vec3 p3 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i] - gSplinePointNormal[i]) - gSplinePointNormal[i];
+		vec3 p3 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i] - gSplinePointNormal[i]) - 0.2f * gSplinePointNormal[i];
 
 		OutVertexBuffer.emplace_back(p0);
 		OutVertexBuffer.emplace_back(p1);
@@ -131,12 +131,7 @@ void CalcSegmentsControlMatTimesBasis(vector<dmat4x3>& OutResult)
 			dvec3& p2 = gTrack.mSplines[i].mPoints[j + 1];
 			dvec3& p3 = gTrack.mSplines[i].mPoints[j + 2];
 
-			vec3 fp0 = vec3(static_cast<float> (p0.x), static_cast<float> (p0.y), static_cast<float> (p0.z));
-			vec3 fp1 = vec3(static_cast<float> (p1.x), static_cast<float> (p1.y), static_cast<float> (p1.z));
-			vec3 fp2 = vec3(static_cast<float> (p2.x), static_cast<float> (p2.y), static_cast<float> (p2.z));
-			vec3 fp3 = vec3(static_cast<float> (p3.x), static_cast<float> (p3.y), static_cast<float> (p3.z));
-			
-			mat4x3 controlMatrix(fp0, fp1, fp2, fp3);
+			mat4x3 controlMatrix(p0, p1, p2, p3);
 
 			OutResult.emplace_back(controlMatrix * gBasisMatrix);
 		}
@@ -251,6 +246,11 @@ void OnKeyboardEvent(GLFWwindow* InWindow)
 	{
 		gCamera.MoveLeftRight(gDeltaTime * gWALKSPEED);
 	}
+
+	if(glfwGetKey(InWindow, GLFW_KEY_F) == GLFW_PRESS)
+	{
+		gFreeCamera = !gFreeCamera;
+	}
 }
 
 GLFWwindow* CreateWindow(int InWidth, int InHeight)
@@ -324,10 +324,10 @@ int main(int argc, char** argv)
 	skybox.mTransform = translate(vec3(0.0f, -100.0f, 0.0f)) * scale(vec3(2.0f, 4.0f, 2.0f));
 
 	StaticMesh house(".//assets//house.itpmesh");
-	house.mTransform = translate(vec3(0.0f, 0.0f, -450.0f)) * rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(10.0f, 10.0f, 10.0f));
+	house.mTransform = translate(vec3(-300.0f, 0.0f, 750.0f)) * rotate(90.0f, vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(10.0f, 10.0f, 10.0f));
 
 	StaticMesh tank(".//assets//tank.itpmesh");
-	tank.mTransform = translate(vec3(-450.0f, 0.0f, -450.0f)) * rotate(90.0f, vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(0.3f, 0.3f, 0.3f));
+	tank.mTransform = translate(vec3(100.0f, 0.0f, 750.0f)) * rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(0.3f, 0.3f, 0.3f));
 
 	StaticMesh dragon(".//assets//dragon.itpmesh");
 	dragon.mTransform = translate(vec3(40.0f, 450.0f, 400.0f)) * rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(0.2f, 0.2f, 0.2f));
@@ -337,9 +337,8 @@ int main(int argc, char** argv)
 
 	gCamera.mPos = vec3(0.0f, 0.0f, 0.0f);
 
-	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 20, -100));
+	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 50, -100));
 	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20)); 
-	splineTransform = transpose(splineTransform);
 
 	gTrack.LoadSplines(argv[1], splineTransform);
 
@@ -483,9 +482,9 @@ int main(int argc, char** argv)
 		mat4 MVP = VP * mat4();
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
 		
-		/*glBindVertexArray(coordinateSystemVertexArray);
+		glBindVertexArray(coordinateSystemVertexArray);
 		glLineWidth(5.0f);
-		glDrawArrays(GL_LINES, 0, 6);*/
+		glDrawArrays(GL_LINES, 0, 6);
 
 		/*glBindVertexArray(splineVertexArray);
 		glLineWidth(1.0f);
@@ -509,19 +508,23 @@ int main(int argc, char** argv)
 		skybox.Render(pntShaderProgramID, VP);
 		glCullFace(GL_BACK);
 
-		
-		gCamera.mPos = gSplinePointPos[gCurrentPoint];
-		gCamera.mForward = gSplinePointTangent[gCurrentPoint];
-		gCamera.mUp = gSplinePointNormal[gCurrentPoint];
-		gCamera.mRight = gSplinePointBinormal[gCurrentPoint];
-
-		float speed = static_cast<float> (pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5));
-		gCurrentPoint += static_cast<int> (speed);
-
-		if (gCurrentPoint >= gSplinePointPos.size())
+		if(!gFreeCamera)
 		{
-			gCurrentPoint = 0;
+			gCamera.mPos = gSplinePointPos[gCurrentPoint];
+			gCamera.mForward = gSplinePointTangent[gCurrentPoint];
+			gCamera.mUp = gSplinePointNormal[gCurrentPoint];
+			gCamera.mRight = gSplinePointBinormal[gCurrentPoint];
+
+			float speed = static_cast<float> (pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5));
+			gCurrentPoint += static_cast<int> (speed);
+
+			if (gCurrentPoint >= gSplinePointPos.size())
+			{
+				gCurrentPoint = 0;
+			}
 		}
+
+		
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();

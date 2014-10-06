@@ -53,7 +53,7 @@ int Track::LoadSplines(const string& InTrackPath, const dmat4& InTransform)
 			&z) != EOF) 
 		{
 			dvec4 transformedPos = dvec4(x, y, z, 1.0);
-			transformedPos = transformedPos * InTransform;
+			transformedPos = InTransform * transformedPos;
 
 			newSpline.mPoints.emplace_back(dvec3(transformedPos.x, transformedPos.y, transformedPos.z));
 		}
