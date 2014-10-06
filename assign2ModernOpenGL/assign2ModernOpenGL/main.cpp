@@ -1,3 +1,4 @@
+#define GLM_FORCE_SIZE_T_LENGTH
 #include "Utilities.h"
 #include "Track.h"
 #include "Camera.h"
@@ -18,7 +19,7 @@ mat4 gBasisMatrix;
 vector<dmat4x3> gSegmentBasisMultiplyControl;
 
 const float gSUBDIVISION = 0.1f;
-int gCurrentPoint = 0; 
+unsigned int gCurrentPoint = 0; 
 vector<vec3> gSplinePointPos;
 vector<vec3> gSplinePointNormal;
 vector<vec3> gSplinePointTangent;
@@ -329,7 +330,7 @@ int main(int argc, char** argv)
 	tank.mTransform = translate(vec3(-450.0f, 0.0f, -450.0f)) * rotate(90.0f, vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(0.3f, 0.3f, 0.3f));
 
 	StaticMesh dragon(".//assets//dragon.itpmesh");
-	dragon.mTransform = translate(vec3(40.0f, 450.0f, 400.0f)) * rotate(0.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(0.2f, 0.2f, 0.2f));
+	dragon.mTransform = translate(vec3(40.0f, 450.0f, 400.0f)) * rotate(90.0f, vec3(0.0f, 1.0f, 0.0f)) * scale(vec3(0.2f, 0.2f, 0.2f));
 
 	StaticMesh helicopter(".//assets//helicopter.itpmesh");
 	helicopter.mTransform = translate(vec3(150.0f, 1000.0f, -300.0f)) * rotate(-130.0f, vec3(1.0f, 0.0f, 0.0f)) * scale(vec3(3.0f, 3.0f, 3.0f));
@@ -514,7 +515,7 @@ int main(int argc, char** argv)
 		gCamera.mUp = gSplinePointNormal[gCurrentPoint];
 		gCamera.mRight = gSplinePointBinormal[gCurrentPoint];
 
-		float speed = pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5);
+		float speed = static_cast<float> (pow(2 * gGravity * (gMaxHeight - gCamera.mPos.y), 0.5));
 		gCurrentPoint += static_cast<int> (speed);
 
 		if (gCurrentPoint >= gSplinePointPos.size())
