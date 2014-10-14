@@ -19,20 +19,24 @@ mat4 gBasisMatrix;
 vector<dmat4x3> gSegmentBasisMultiplyControl;
 
 const float gSUBDIVISION = 0.1f;
-unsigned int gCurrentPoint = 0; 
+unsigned int gCurrentPoint = 0;
 vector<vec3> gSplinePointPos;
 vector<vec3> gSplinePointNormal;
 vector<vec3> gSplinePointTangent;
 vector<vec3> gSplinePointBinormal;
 vector<vec3> gSplinePointColor;
 
-vector<vec3> gTrackPos;
-vector<vec3> gTrackColor;
-vector<unsigned int> gTrackIndex;
+vector<vec3> gTrackPosLeft;
+vector<vec3> gTrackColorLeft;
+vector<unsigned int> gTrackIndexLeft;
+
+vector<vec3> gTrackPosRight;
+vector<vec3> gTrackColorRight;
+vector<unsigned int> gTrackIndexRight;
 
 float gMaxHeight = 0.0f;
 const float gGravity = 3.5f;
-const float gTrackScale = 0.3f;
+const float gTrackScale = 0.05f;
 
 const float gROTATIONSPEED = 0.25f;
 const float gWALKSPEED = 50.0f;
@@ -43,78 +47,143 @@ float gPrevTime = 0.0f;
 float gCurrTime = 0.0f;
 float gDeltaTime = 0.0f;
 
-unordered_map<string, GLuint> gTextureDict;
+int gFrameRemaining = 0;
+bool gCapFPS = false;
 
-void BuildTrackMesh(vector<vec3>& OutVertexBuffer, vector<vec3>& OutColorBuffer, vector<unsigned int>& OutIndexBuffer)
+void BuildTrackMesh(vector<vec3>& OutVertexBufferLeft, vector<vec3>& OutVertexBufferRight, vector<vec3>& OutColorBufferLeft, vector<vec3>& OutColorBufferRight, vector<unsigned int>& OutIndexBufferLeft, vector<unsigned int>& OutIndexBufferRight)
 {
-	for(unsigned int i = 0; i < gSplinePointPos.size(); ++i)
+	for (unsigned int i = 0; i < gSplinePointPos.size(); ++i)
 	{
-		if(i != gSplinePointPos.size() - 1)
+		if (i != gSplinePointPos.size() - 1)
 		{
-			OutIndexBuffer.emplace_back(i * 4);
-			OutIndexBuffer.emplace_back(i * 4 + 2);
-			OutIndexBuffer.emplace_back(i * 4 + 1);
+			// Left Rail
+			OutIndexBufferLeft.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back(i * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4 + 1);
 
-			OutIndexBuffer.emplace_back(i * 4 + 2);
-			OutIndexBuffer.emplace_back(i * 4);
-			OutIndexBuffer.emplace_back(i * 4 + 3);
+			OutIndexBufferLeft.emplace_back(i * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back(i * 4 + 3);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
-			OutIndexBuffer.emplace_back(i * 4 + 2);
-			OutIndexBuffer.emplace_back(i * 4 + 3);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4 + 3);
 
-			OutIndexBuffer.emplace_back(i * 4 + 3);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4 + 3);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
-			OutIndexBuffer.emplace_back(i * 4 + 1);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferLeft.emplace_back(i * 4 + 1);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
-			OutIndexBuffer.emplace_back(i * 4 + 1);
-			OutIndexBuffer.emplace_back(i * 4 + 2);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back(i * 4 + 1);
+			OutIndexBufferLeft.emplace_back(i * 4 + 2);
 
-			OutIndexBuffer.emplace_back(i * 4);
-			OutIndexBuffer.emplace_back(i * 4 + 1);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferLeft.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back(i * 4 + 1);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 1);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
-			OutIndexBuffer.emplace_back((i + 1) * 4);
-			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4);
+			OutIndexBufferLeft.emplace_back(i * 4);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
-			OutIndexBuffer.emplace_back(i * 4 + 3);
-			OutIndexBuffer.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferLeft.emplace_back(i * 4 + 3);
+			OutIndexBufferLeft.emplace_back(i * 4);
 
-			OutIndexBuffer.emplace_back(i * 4);
-			OutIndexBuffer.emplace_back((i + 1) * 4);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferLeft.emplace_back(i * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 3);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 3);
-			OutIndexBuffer.emplace_back((i + 1) * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4);
 
-			OutIndexBuffer.emplace_back((i + 1) * 4);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 1);
-			OutIndexBuffer.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferLeft.emplace_back((i + 1) * 4 + 2);
+
+			//Right Rail
+			OutIndexBufferRight.emplace_back(i * 4);
+			OutIndexBufferRight.emplace_back(i * 4 + 2);
+			OutIndexBufferRight.emplace_back(i * 4 + 1);
+
+			OutIndexBufferRight.emplace_back(i * 4 + 2);
+			OutIndexBufferRight.emplace_back(i * 4);
+			OutIndexBufferRight.emplace_back(i * 4 + 3);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferRight.emplace_back(i * 4 + 2);
+			OutIndexBufferRight.emplace_back(i * 4 + 3);
+
+			OutIndexBufferRight.emplace_back(i * 4 + 3);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferRight.emplace_back(i * 4 + 1);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferRight.emplace_back(i * 4 + 1);
+			OutIndexBufferRight.emplace_back(i * 4 + 2);
+
+			OutIndexBufferRight.emplace_back(i * 4);
+			OutIndexBufferRight.emplace_back(i * 4 + 1);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 1);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferRight.emplace_back((i + 1) * 4);
+			OutIndexBufferRight.emplace_back(i * 4);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferRight.emplace_back(i * 4 + 3);
+			OutIndexBufferRight.emplace_back(i * 4);
+
+			OutIndexBufferRight.emplace_back(i * 4);
+			OutIndexBufferRight.emplace_back((i + 1) * 4);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 3);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 3);
+			OutIndexBufferRight.emplace_back((i + 1) * 4);
+
+			OutIndexBufferRight.emplace_back((i + 1) * 4);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 1);
+			OutIndexBufferRight.emplace_back((i + 1) * 4 + 2);
 		}
-		
 
-		vec3 p0 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i] + gSplinePointNormal[i]) - 0.2f * gSplinePointNormal[i];
-		vec3 p1 = gSplinePointPos[i] - gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
-		vec3 p2 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i]) - gSplinePointNormal[i];
-		vec3 p3 = gSplinePointPos[i] + gTrackScale * (gSplinePointBinormal[i] - gSplinePointNormal[i]) - 0.2f * gSplinePointNormal[i];
+		vec3 p0l = gSplinePointPos[i] - gTrackScale * (4.0f * gSplinePointBinormal[i] + 4.0f * gSplinePointNormal[i]);
+		vec3 p1l = gSplinePointPos[i] - gTrackScale * (4.0f * gSplinePointBinormal[i] + 3.0f * gSplinePointNormal[i]);
+		vec3 p2l = gSplinePointPos[i] - gTrackScale * (3.0f * gSplinePointBinormal[i] + 3.0f * gSplinePointNormal[i]);
+		vec3 p3l = gSplinePointPos[i] - gTrackScale * (3.0f * gSplinePointBinormal[i] + 4.0f * gSplinePointNormal[i]);
 
-		OutVertexBuffer.emplace_back(p0);
-		OutVertexBuffer.emplace_back(p1);
-		OutVertexBuffer.emplace_back(p2);
-		OutVertexBuffer.emplace_back(p3);
-	
-		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
-		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
-		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
-		OutColorBuffer.emplace_back(vec3(0.5f, 0.5f, 0.5f));	
+		vec3 p0r = gSplinePointPos[i] + gTrackScale * (3.0f * gSplinePointBinormal[i] - 4.0f * gSplinePointNormal[i]);
+		vec3 p1r = gSplinePointPos[i] + gTrackScale * (3.0f * gSplinePointBinormal[i] - 3.0f * gSplinePointNormal[i]);
+		vec3 p2r = gSplinePointPos[i] + gTrackScale * (4.0f * gSplinePointBinormal[i] - 3.0f * gSplinePointNormal[i]);
+		vec3 p3r = gSplinePointPos[i] + gTrackScale * (4.0f * gSplinePointBinormal[i] - 4.0f * gSplinePointNormal[i]);
+
+		OutVertexBufferLeft.emplace_back(p0l);
+		OutVertexBufferLeft.emplace_back(p1l);
+		OutVertexBufferLeft.emplace_back(p2l);
+		OutVertexBufferLeft.emplace_back(p3l);
+
+		OutColorBufferLeft.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferLeft.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferLeft.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferLeft.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+
+		OutVertexBufferRight.emplace_back(p0r);
+		OutVertexBufferRight.emplace_back(p1r);
+		OutVertexBufferRight.emplace_back(p2r);
+		OutVertexBufferRight.emplace_back(p3r);
+
+		OutColorBufferRight.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferRight.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferRight.emplace_back(vec3(0.5f, 0.5f, 0.5f));
+		OutColorBufferRight.emplace_back(vec3(0.5f, 0.5f, 0.5f));
 	}
 }
 
@@ -153,7 +222,7 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 
 	dvec3 x0Tangent = gSegmentBasisMultiplyControl[InSegIndex] * u0Tangent;
 	dvec3 x1Tangent = gSegmentBasisMultiplyControl[InSegIndex] * u1Tangent;
-	
+
 	if (length(x1 - x0) > InMaxLineLength)
 	{
 		RecSubdiv(InU0, umid, InMaxLineLength, InSegIndex);
@@ -161,7 +230,7 @@ void RecSubdiv(float InU0, float InU1, float InMaxLineLength, int InSegIndex)
 	}
 	else
 	{
-		gSplinePointPos.emplace_back(vec3(x0.x, x0.y, x0.z)); 
+		gSplinePointPos.emplace_back(vec3(x0.x, x0.y, x0.z));
 		gSplinePointTangent.emplace_back(normalize(x0Tangent));
 		gSplinePointColor.emplace_back(vec3(1.0f, 0.0f, 0.0f));
 
@@ -178,7 +247,7 @@ void saveScreenshot(char *filename){
 
 	if (filename == NULL)
 	{
-		return ;
+		return;
 	}
 
 	in = pic_alloc(640, 480, 3, NULL);
@@ -188,9 +257,9 @@ void saveScreenshot(char *filename){
 
 	glReadPixels(0, 0, 640, 480, GL_RGB, GL_UNSIGNED_BYTE, &in->pix[0]);
 
-	for (int j = 0; j < 480; j++) 
+	for (int j = 0; j < 480; j++)
 	{
-		for (int i = 0; i < 640; i++) 
+		for (int i = 0; i < 640; i++)
 		{
 			PIC_PIXEL(out, i, j, 0) = PIC_PIXEL(in, i, 480 - 1 - j, 0);
 			PIC_PIXEL(out, i, j, 1) = PIC_PIXEL(in, i, 480 - 1 - j, 1);
@@ -227,7 +296,7 @@ void OnMouseEvent(GLFWwindow* InWindow)
 
 void OnKeyboardEvent(GLFWwindow* InWindow)
 {
-	if(glfwGetKey(InWindow, GLFW_KEY_W) == GLFW_PRESS)
+	if (glfwGetKey(InWindow, GLFW_KEY_W) == GLFW_PRESS)
 	{
 		gCamera.MoveForwardBack(gDeltaTime * gWALKSPEED);
 	}
@@ -247,9 +316,25 @@ void OnKeyboardEvent(GLFWwindow* InWindow)
 		gCamera.MoveLeftRight(gDeltaTime * gWALKSPEED);
 	}
 
-	if(glfwGetKey(InWindow, GLFW_KEY_F) == GLFW_PRESS)
+	if (glfwGetKey(InWindow, GLFW_KEY_F) == GLFW_PRESS)
 	{
 		gFreeCamera = !gFreeCamera;
+	}
+
+	if (glfwGetKey(InWindow, GLFW_KEY_C) == GLFW_PRESS)
+	{
+		gCapFPS = !gCapFPS;
+	}
+
+	if (glfwGetKey(InWindow, GLFW_KEY_SPACE) == GLFW_PRESS)
+	{
+		if(gFrameRemaining < 1000)
+		{
+			char myFilenm[2048];
+			sprintf(myFilenm, "anim.%04d.jpg", gFrameRemaining);
+			saveScreenshot(myFilenm);
+			++gFrameRemaining;
+		}
 	}
 }
 
@@ -274,7 +359,7 @@ int main(int argc, char** argv)
 		printf("usage: %s <trackfile>\n", argv[0]);
 		exit(0);
 	}
-	
+
 	if (!glfwInit())
 	{
 		cout << "Cannot initialize GLFW. Press Enter to exit.\n";
@@ -313,10 +398,6 @@ int main(int argc, char** argv)
 	glCullFace(GL_BACK);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-
-	/*StaticMesh groundMesh(".//assets//ground.itpmesh");
-	groundMesh.mTransform = translate(vec3(0.0f, 0.0f, 0.0f));*/
-
 	StaticMesh groundMesh(".//assets//ground.itpmesh");
 	groundMesh.mTransform = translate(vec3(0.0f, 0.0f, 0.0f));
 
@@ -338,7 +419,7 @@ int main(int argc, char** argv)
 	gCamera.mPos = vec3(0.0f, 0.0f, 0.0f);
 
 	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 50, -100));
-	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20)); 
+	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20));
 
 	gTrack.LoadSplines(argv[1], splineTransform);
 
@@ -349,7 +430,7 @@ int main(int argc, char** argv)
 	gBasisMatrix = mat4(row1, row2, row3, row4);
 
 	CalcSegmentsControlMatTimesBasis(gSegmentBasisMultiplyControl);
-	for(unsigned int i = 0; i < gSegmentBasisMultiplyControl.size(); ++i)
+	for (unsigned int i = 0; i < gSegmentBasisMultiplyControl.size(); ++i)
 	{
 		RecSubdiv(0, 1.0f, gSUBDIVISION, i);
 	}
@@ -363,14 +444,14 @@ int main(int argc, char** argv)
 
 	gSplinePointBinormal.emplace_back(vec3(-1.0f, 0.0f, 0.0f));
 	gSplinePointNormal.emplace_back(normalize(cross(gSplinePointBinormal[0], gSplinePointTangent[0])));
-	for(unsigned int i = 1; i < gSplinePointPos.size(); ++i)
+	for (unsigned int i = 1; i < gSplinePointPos.size(); ++i)
 	{
 		gSplinePointNormal.emplace_back(normalize(cross(gSplinePointBinormal[i - 1], gSplinePointTangent[i])));
 		gSplinePointBinormal.emplace_back(normalize(cross(gSplinePointTangent[i], gSplinePointNormal[i])));
 	}
 
 
-	BuildTrackMesh(gTrackPos, gTrackColor, gTrackIndex);
+	BuildTrackMesh(gTrackPosLeft, gTrackPosRight, gTrackColorLeft, gTrackColorRight, gTrackIndexLeft, gTrackIndexRight);
 
 	vector<vec3> coordinateSystemVertices;
 	vector<vec3> coordinateSystemColors;
@@ -378,7 +459,7 @@ int main(int argc, char** argv)
 	coordinateSystemVertices.emplace_back(vec3(100.f, 0.f, 0.f));
 	coordinateSystemColors.emplace_back(vec3(1.f, 0.f, 0.f));
 	coordinateSystemColors.emplace_back(vec3(1.f, 0.f, 0.f));
-	
+
 	coordinateSystemVertices.emplace_back(vec3(0.f, 0.f, 0.f));
 	coordinateSystemVertices.emplace_back(vec3(0.f, 100.f, 0.f));
 	coordinateSystemColors.emplace_back(vec3(0.f, 1.f, 0.f));
@@ -396,15 +477,20 @@ int main(int argc, char** argv)
 	GLuint coordinateSystemVertexArray;
 	GLuint coordinateSystemVerticesBuffer;
 	GLuint coordinateSystemColorsBuffer;
-	
+
 	GLuint splineVertexArray;
 	GLuint splineVerticesBuffer;
 	GLuint splineColorBuffer;
 
-	GLuint trackVertexArray;
-	GLuint trackVerticesBuffer;
-	GLuint trackColorBuffer;
-	GLuint trackIndexBuffer;
+	GLuint trackVertexArrayLeft;
+	GLuint trackVerticesBufferLeft;
+	GLuint trackColorBufferLeft;
+	GLuint trackIndexBufferLeft;
+
+	GLuint trackVertexArrayRight;
+	GLuint trackVerticesBufferRight;
+	GLuint trackColorBufferRight;
+	GLuint trackIndexBufferRight;
 
 	glGenVertexArrays(1, &coordinateSystemVertexArray);
 	glBindVertexArray(coordinateSystemVertexArray);
@@ -436,40 +522,75 @@ int main(int argc, char** argv)
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	glGenVertexArrays(1, &trackVertexArray);
-	glBindVertexArray(trackVertexArray);
+	// Left
+	glGenVertexArrays(1, &trackVertexArrayLeft);
+	glBindVertexArray(trackVertexArrayLeft);
 
-	glGenBuffers(1, &trackVerticesBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, trackVerticesBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackPos.size(), &gTrackPos[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &trackVerticesBufferLeft);
+	glBindBuffer(GL_ARRAY_BUFFER, trackVerticesBufferLeft);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackPosLeft.size(), &gTrackPosLeft[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(0);
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	glGenBuffers(1, &trackColorBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, trackColorBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackColor.size(), &gTrackColor[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &trackColorBufferLeft);
+	glBindBuffer(GL_ARRAY_BUFFER, trackColorBufferLeft);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackColorLeft.size(), &gTrackColorLeft[0], GL_STATIC_DRAW);
 	glEnableVertexAttribArray(1);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
 
-	glGenBuffers(1, &trackIndexBuffer);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, trackIndexBuffer);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * gTrackIndex.size(), &gTrackIndex[0], GL_STATIC_DRAW);
+	glGenBuffers(1, &trackIndexBufferLeft);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, trackIndexBufferLeft);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * gTrackIndexLeft.size(), &gTrackIndexLeft[0], GL_STATIC_DRAW);
+
+	// Right
+	glGenVertexArrays(1, &trackVertexArrayRight);
+	glBindVertexArray(trackVertexArrayRight);
+
+	glGenBuffers(1, &trackVerticesBufferRight);
+	glBindBuffer(GL_ARRAY_BUFFER, trackVerticesBufferRight);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackPosRight.size(), &gTrackPosRight[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(0);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glGenBuffers(1, &trackColorBufferRight);
+	glBindBuffer(GL_ARRAY_BUFFER, trackColorBufferRight);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vec3) * gTrackColorRight.size(), &gTrackColorRight[0], GL_STATIC_DRAW);
+	glEnableVertexAttribArray(1);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 0, nullptr);
+
+	glGenBuffers(1, &trackIndexBufferRight);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, trackIndexBufferRight);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(unsigned int) * gTrackIndexRight.size(), &gTrackIndexRight[0], GL_STATIC_DRAW);
+
 
 	glBindVertexArray(0);
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	
+
 
 	GLuint MVPMatrixID = glGetUniformLocation(shaderProgramID, "MVP");
 	GLuint MVPMatrixIDPNT = glGetUniformLocation(pntShaderProgramID, "MVP");
 	GLuint textureID = glGetUniformLocation(pntShaderProgramID, "textureSampler");
-	
+
 	mat4 proj = perspective(60.0f, static_cast<float> (gWindowWidth) / gWindowHeight, 0.1f, 5000.0f);
-	
+
+
+
 	do
 	{
 		gCurrTime = static_cast<float> (glfwGetTime());
 		gDeltaTime = gCurrTime - gPrevTime;
+		
+		if(gCapFPS)
+		{
+			float sleepTime = std::max(0.067f - gDeltaTime, 0.0f);
+			this_thread::sleep_for(chrono::milliseconds(static_cast<long long> (sleepTime * 1000)));
+		}
+
+
+
+
+
 
 		OnMouseEvent(window);
 		OnKeyboardEvent(window);
@@ -481,21 +602,23 @@ int main(int argc, char** argv)
 		glUseProgram(shaderProgramID);
 		mat4 MVP = VP * mat4();
 		glUniformMatrix4fv(MVPMatrixID, 1, GL_FALSE, &MVP[0][0]);
-		
-		glBindVertexArray(coordinateSystemVertexArray);
+
+		/*glBindVertexArray(coordinateSystemVertexArray);
 		glLineWidth(5.0f);
-		glDrawArrays(GL_LINES, 0, 6);
+		glDrawArrays(GL_LINES, 0, 6);*/
 
 		/*glBindVertexArray(splineVertexArray);
 		glLineWidth(1.0f);
 		glDrawArrays(GL_LINE_STRIP, 0, gSplinePointPos.size());*/
 
-		glBindVertexArray(trackVertexArray);
-		glDrawElements(GL_TRIANGLES, gTrackIndex.size(), GL_UNSIGNED_INT, nullptr);
+		glBindVertexArray(trackVertexArrayLeft);
+		glDrawElements(GL_TRIANGLES, gTrackIndexLeft.size(), GL_UNSIGNED_INT, nullptr);
+
+		glBindVertexArray(trackVertexArrayRight);
+		glDrawElements(GL_TRIANGLES, gTrackIndexRight.size(), GL_UNSIGNED_INT, nullptr);
 
 		glBindVertexArray(0);
 
-		
 
 		glUseProgram(pntShaderProgramID);
 		groundMesh.Render(pntShaderProgramID, VP);
@@ -508,7 +631,7 @@ int main(int argc, char** argv)
 		skybox.Render(pntShaderProgramID, VP);
 		glCullFace(GL_BACK);
 
-		if(!gFreeCamera)
+		if (!gFreeCamera)
 		{
 			gCamera.mPos = gSplinePointPos[gCurrentPoint];
 			gCamera.mForward = gSplinePointTangent[gCurrentPoint];
@@ -524,14 +647,13 @@ int main(int argc, char** argv)
 			}
 		}
 
-		
+
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-		
+
 		gPrevTime = gCurrTime;
-	} 
-	while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window));
+	} while (glfwGetKey(window, GLFW_KEY_ESCAPE) != GLFW_PRESS && !glfwWindowShouldClose(window));
 
 	glfwTerminate();
 	return 0;

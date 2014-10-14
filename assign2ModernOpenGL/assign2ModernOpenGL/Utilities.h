@@ -4,6 +4,7 @@
 #include <fstream>
 #include <vector>
 #include <unordered_map>
+#include <thread>
 #include "glew/include/GL/glew.h"
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
