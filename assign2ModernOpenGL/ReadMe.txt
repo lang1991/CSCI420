@@ -20,3 +20,17 @@ To sum up, here are the extra credits I did:
 
 
 Please make sure you run my project in VS2012; otherwise it will not build..........................
+
+
+
+
+
+
+
+Open-ended questions:
+
+1. The seams in the sky:
+I did not solve the problem perfectly. However, I think if the UV texture mode is set to Clap or Mirror, the seam could be less obvious.
+
+2. Determining the camera normal:
+I solved my problem by trial and error. 

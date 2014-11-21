@@ -421,7 +421,7 @@ int main(int argc, char** argv)
 	dmat4 translateMat = translate(dmat4(1), dvec3(-125, 50, -100));
 	dmat4 splineTransform = translateMat * scale(dvec3(20, 20, 20));
 
-	gTrack.LoadSplines(argv[1], splineTransform);
+	gTrack.LoadSplines(argv[1], dmat4(1.0)/*splineTransform*/);
 
 	vec4 row1(-gTension, 2 - gTension, gTension - 2, gTension);
 	vec4 row2(2 * gTension, gTension - 3, 3 - 2 * gTension, -gTension);
