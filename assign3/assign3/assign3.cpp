@@ -52,8 +52,9 @@ vector3 cameraRight(1.0f, 0.0f, 0.0f);
 // Camera position
 vector3 cameraPos(0.0f, 0.0f, 0.0f);
 
-
+const int SMAAFactor = 2;
 unsigned char buffer[HEIGHT][WIDTH][3];
+double SMAABuffer[HEIGHT * SMAAFactor][WIDTH * SMAAFactor][3];
 
 struct Vertex
 {
@@ -98,25 +99,8 @@ void plot_pixel_jpeg(int x, int y, unsigned char r, unsigned char g, unsigned ch
 void plot_pixel(int x, int y, unsigned char r, unsigned char g, unsigned char b);
 
 
-
-//MODIFY THIS FUNCTION
 void draw_scene()
 {
-	//unsigned int x,y;
-	////simple output
-	//for(x=0; x<WIDTH; x++)
-	//{
-	//	glPointSize(2.0);
-	//	glBegin(GL_POINTS);
-	//	for (y = 0; y < HEIGHT; y++)
-	//	{
-	//		plot_pixel(x, y, x % 256, y % 256, (x + y) % 256);
-	//	}
-	//	glEnd();
-	//	glFlush();
-	//}
-	//printf("Done!\n"); fflush(stdout);
-
 	// Send out rays first
 	double tanHalfFOV = tan(fov * 0.5f / 180 * PI);
 	double imagePlaneHeight = 2 * focalLength * tanHalfFOV;
@@ -125,17 +109,14 @@ void draw_scene()
 	// Origin is top left
 	vector3 imagePlaneOrigin = vector3(imagePlaneCenter.x - imagePlaneWidth / 2, imagePlaneCenter.y - imagePlaneHeight / 2, imagePlaneCenter.z);
 	// Pixel height
-	double pixelHeight = imagePlaneHeight / HEIGHT;
+	double pixelHeight = imagePlaneHeight / (HEIGHT * SMAAFactor);
 	// Pixel width
-	double pixelWidth = imagePlaneWidth / WIDTH;
+	double pixelWidth = imagePlaneWidth / (WIDTH * SMAAFactor);
 
-	glPointSize(2.0);
-	glBegin(GL_POINTS);
-	for(int i = 0; i < HEIGHT; ++i)
+	
+	for(int i = 0; i < (HEIGHT * SMAAFactor); ++i)
 	{
-		glPointSize(2.0);
-		glBegin(GL_POINTS);
-		for(int j = 0; j < WIDTH; ++j)
+		for (int j = 0; j < (WIDTH * SMAAFactor); ++j)
 		{
 			vector3 pixelCenter = imagePlaneOrigin + cameraUp * i * pixelHeight + cameraRight * j * pixelWidth;
 			vector3 rayDirection = pixelCenter.normalize();
@@ -331,19 +312,49 @@ void draw_scene()
 					resultColor[2] = max(0, resultColor[2]);
 					resultColor[2] = min(1, resultColor[2]);
 					
-
-					plot_pixel(j, i, resultColor[0] * 255, resultColor[1] * 255, resultColor[2] * 255);
+					SMAABuffer[i][j][0] = resultColor[0];
+					SMAABuffer[i][j][1] = resultColor[1];
+					SMAABuffer[i][j][2] = resultColor[2];
 				}
 			}
 			else
 			{
-				plot_pixel(j, i, 255, 255, 255);
+				SMAABuffer[i][j][0] = 1;
+				SMAABuffer[i][j][1] = 1;
+				SMAABuffer[i][j][2] = 1;
 			}
+
 		}
-		glEnd();
-		glFlush();
 	}
 	
+	glPointSize(2.0);
+	glBegin(GL_POINTS);
+	for (int i = 0; i < HEIGHT; ++i)
+	{
+		for (int j = 0; j < WIDTH; ++j)
+		{
+			double r = 0;
+			double g = 0;
+			double b = 0;
+
+			for (int ii = 0; ii < SMAAFactor; ++ii)
+			{
+				for (int jj = 0; jj < SMAAFactor; ++jj)
+				{
+					r += SMAABuffer[i * SMAAFactor + ii][j * SMAAFactor + jj][0];
+					g += SMAABuffer[i * SMAAFactor + ii][j * SMAAFactor + jj][1];
+					b += SMAABuffer[i * SMAAFactor + ii][j * SMAAFactor + jj][2];
+				}
+			}
+			r /= (SMAAFactor * SMAAFactor);
+			g /= (SMAAFactor * SMAAFactor);
+			b /= (SMAAFactor * SMAAFactor);
+
+			plot_pixel(j, i, r * 255, g * 255, b * 255);
+		}
+	}
+	glEnd();
+	glFlush();
 }
 
 void plot_pixel_display(int x,int y,unsigned char r,unsigned char g,unsigned char b)
